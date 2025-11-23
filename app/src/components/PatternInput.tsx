@@ -18,8 +18,10 @@ const PatternInput: React.FC<PatternInputProps> = ({ patterns, onPatternsChange,
   };
 
   return (
-    <div className="control-row">
-      <label htmlFor="patterns">Folder Patterns (comma-separated)</label>
+    <div className="mb-4">
+      <label htmlFor="patterns" className="block mb-1.5 text-sm font-medium text-gray-800">
+        Folder Patterns (comma-separated)
+      </label>
       <input
         id="patterns"
         type="text"
@@ -27,6 +29,7 @@ const PatternInput: React.FC<PatternInputProps> = ({ patterns, onPatternsChange,
         onChange={(e) => handleChange(e.target.value)}
         placeholder="e.g., node_modules, .next, dist"
         disabled={disabled}
+        className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:border-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
       />
     </div>
   );

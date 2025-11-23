@@ -12,30 +12,18 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ total, completed, currentPath
   const percentage = Math.min(100, (completed / total) * 100);
 
   return (
-    <div className="progress-section">
-      <div style={{ fontSize: 14, marginBottom: 8, fontWeight: 500 }}>
+    <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="text-sm mb-2 font-medium text-gray-800">
         Deleting {completed} / {total} folders
       </div>
-      <div
-        style={{
-          width: '100%',
-          height: 10,
-          background: '#e9ecef',
-          borderRadius: 4,
-          overflow: 'hidden',
-        }}
-      >
+      <div className="w-full h-2.5 bg-gray-200 rounded overflow-hidden">
         <div
-          style={{
-            width: `${percentage}%`,
-            height: '100%',
-            background: '#2c67e2',
-            transition: 'width 0.3s ease',
-          }}
+          className="h-full bg-blue-600 transition-all duration-300 ease-in-out"
+          style={{ width: `${percentage}%` }}
         />
       </div>
       {currentPath && (
-        <div style={{ marginTop: 8, fontSize: 12, color: '#6c757d', fontFamily: 'Courier New, monospace' }}>
+        <div className="mt-2 text-xs text-gray-500 font-mono">
           Current: {currentPath}
         </div>
       )}

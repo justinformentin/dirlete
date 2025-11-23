@@ -250,13 +250,13 @@ function App() {
   const selectedCount = folders.filter((f) => f.status === 'selected').length;
 
   return (
-    <div className="app">
-      <div className="header">
-        <h1>Dirlete</h1>
-        <p>Delete node_modules and other folders efficiently</p>
+    <div className="max-w-7xl mx-auto p-5">
+      <div className="bg-white p-5 rounded-lg shadow-sm mb-5">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-2">Dirlete</h1>
+        <p className="text-sm text-gray-600">Delete node_modules and other folders efficiently</p>
       </div>
 
-      <div className="controls">
+      <div className="bg-white p-5 rounded-lg shadow-sm mb-5">
         <RootPicker root={root} onRootChange={setRoot} disabled={isDeleting} />
         <PatternInput
           patterns={patterns}
@@ -272,7 +272,7 @@ function App() {
         />
       </div>
 
-      <div className="results">
+      <div className="bg-white p-5 rounded-lg shadow-sm">
         <ResultsTable
           folders={folders}
           rootPath={root}
@@ -281,9 +281,9 @@ function App() {
         />
 
         {folders.length > 0 && (
-          <div style={{ marginTop: 16 }}>
+          <div className="mt-4">
             <button
-              className="danger"
+              className="px-4 py-2 bg-red-600 text-white rounded font-medium transition-colors hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
               onClick={handleDeleteSelected}
               disabled={selectedCount === 0 || isDeleting || isScanning}
             >

@@ -27,9 +27,11 @@ const RootPicker: React.FC<RootPickerProps> = ({ root, onRootChange, disabled })
   };
 
   return (
-    <div className="control-row">
-      <label htmlFor="root-path">Root Directory</label>
-      <div className="input-with-button">
+    <div className="mb-4">
+      <label htmlFor="root-path" className="block mb-1.5 text-sm font-medium text-gray-800">
+        Root Directory
+      </label>
+      <div className="flex gap-2">
         <input
           id="root-path"
           type="text"
@@ -37,8 +39,13 @@ const RootPicker: React.FC<RootPickerProps> = ({ root, onRootChange, disabled })
           onChange={(e) => onRootChange(e.target.value)}
           placeholder="Select a root directory to scan..."
           disabled={disabled}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:border-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
-        <button onClick={handleChooseFolder} disabled={disabled}>
+        <button
+          onClick={handleChooseFolder}
+          disabled={disabled}
+          className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium transition-colors hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
           Browse...
         </button>
       </div>
