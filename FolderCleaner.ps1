@@ -197,8 +197,10 @@ $btnScan.Add_Click({
         Set-UIBusy $false "Scan complete. Found $count folder(s)."
     } catch {
         Set-UIBusy $false "Error during scan."
-        [System.Windows.Forms.MessageBox]::Show("An error occurred during scan:`r`n$($_.Exception.Message)",
-            "Error", 'OK', 'Error') | Out-Null
+        [System.Windows.Forms.MessageBox]::Show(
+            "An error occurred during scan:`r`n$($_.Exception.Message)",
+            "Error", 'OK', 'Error'
+        ) | Out-Null
     }
 })
 
@@ -256,16 +258,19 @@ $btnDelete.Add_Click({
             $errors++
         }
 
-        # Remove from list box after processing
-        $index = $listBox.Items.IndexOf($path)
-        if ($index -ge 0) {
-            $listBox.Items.RemoveAt($index)
-        }
-
         if ($progressBar.Value -lt $progressBar.Maximum) {
             $progressBar.Value++
         }
-        $form.Refresh()
+
+        # Let the UI process messages so it doesn't show "Not Responding"
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+
+    # After we're done deleting, remove checked items from the list
+    for ($i = $listBox.Items.Count - 1; $i -ge 0; $i--) {
+        if ($listBox.GetItemChecked($i)) {
+            $listBox.Items.RemoveAt($i)
+        }
     }
 
     Set-UIBusy $false "Delete complete. Deleted $deleted, errors $errors."
