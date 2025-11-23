@@ -2,6 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FolderRow } from '../types/ipc';
 
+enum Status {
+  Pending = 'pending',
+  Selected = 'selected',
+  Deleting = 'deleting',
+  Deleted = 'deleted',
+  Failed = 'failed',
+}
 type SortField = 'path' | 'size';
 type SortDirection = 'asc' | 'desc';
 
@@ -12,7 +19,12 @@ interface ResultsTableProps {
   onToggleAll: () => void;
 }
 
-const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggleSelection, onToggleAll }) => {
+const ResultsTable: React.FC<ResultsTableProps> = ({
+  folders,
+  rootPath,
+  onToggleSelection,
+  onToggleAll,
+}) => {
   // All hooks must be called before any early returns
   const [sortField, setSortField] = useState<SortField>('path');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -49,8 +61,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
   }, [folders, sortField, sortDirection]);
 
   const selectedCount = folders.filter((f) => f.status === 'selected').length;
-  const deletableCount = folders.filter((f) =>
-    f.status === 'pending' || f.status === 'selected'
+  const deletableCount = folders.filter(
+    (f) => f.status === 'pending' || f.status === 'selected'
   ).length;
   const allSelected = deletableCount > 0 && selectedCount === deletableCount;
 
@@ -59,7 +71,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
     return (
       <div className="text-center py-10 text-gray-500">
         <p className="mb-4">No folders found yet.</p>
-        <p>Select a root directory and click "Scan for Folders" to get started.</p>
+        <p>
+          Select a root directory and click "Scan for Folders" to get started.
+        </p>
       </div>
     );
   }
@@ -76,7 +90,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
   };
 
   const getStatusClass = (status: string): string => {
-    const baseClasses = 'inline-block px-2 py-1 rounded-sm text-[11px] font-semibold uppercase';
+    const baseClasses =
+      'inline-block px-2 py-1 rounded-sm text-[11px] font-semibold uppercase';
     const statusClasses = {
       pending: 'bg-gray-200 text-gray-700',
       selected: 'bg-blue-100 text-blue-800',
@@ -84,7 +99,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
       deleted: 'bg-green-100 text-green-800',
       failed: 'bg-red-100 text-red-800',
     };
-    return `${baseClasses} ${statusClasses[status as keyof typeof statusClasses] || ''}`;
+    return `${baseClasses} ${
+      statusClasses[status as keyof typeof statusClasses] || ''
+    }`;
   };
 
   const getDisplayPath = (fullPath: string): string => {
@@ -142,13 +159,15 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
                 className="p-3 text-left text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300 cursor-pointer select-none transition-colors hover:bg-gray-100"
                 onClick={() => handleSort('path')}
               >
-                Path {sortField === 'path' && (sortDirection === 'asc' ? '▲' : '▼')}
+                Path{' '}
+                {sortField === 'path' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
               <th
                 className="w-[120px] text-right p-3 text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300 cursor-pointer select-none transition-colors hover:bg-gray-100"
                 onClick={() => handleSort('size')}
               >
-                Size {sortField === 'size' && (sortDirection === 'asc' ? '▲' : '▼')}
+                Size{' '}
+                {sortField === 'size' && (sortDirection === 'asc' ? '▲' : '▼')}
               </th>
               <th className="w-[120px] p-3 text-left text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300">
                 Status
@@ -157,8 +176,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
           </thead>
           <tbody>
             {sortedFolders.map((folder) => {
-              const canSelect = folder.status === 'pending' || folder.status === 'selected';
-              const isSelected = folder.status === 'selected';
+              const isSelected = folder.status === Status.Selected;
+              const isDeleted = folder.status === Status.Deleted;
+              const canSelect = folder.status === Status.Pending || isSelected;
 
               return (
                 <tr key={folder.path} className="hover:bg-gray-50">
@@ -171,18 +191,36 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
                       className="w-4 h-4 cursor-pointer"
                     />
                   </td>
-                  <td className="p-2.5 text-[12px] font-mono border-b border-gray-200 max-w-[500px] overflow-hidden text-ellipsis whitespace-nowrap" title={folder.path}>
+                  <td
+                    className="p-2.5 text-[12px] font-mono border-b border-gray-200 max-w-[500px] overflow-hidden text-ellipsis whitespace-nowrap"
+                    title={folder.path}
+                  >
                     <span
-                      className="text-blue-600 cursor-pointer underline transition-colors hover:text-blue-700"
-                      onClick={() => handleOpenFolder(folder.path)}
+                      className={
+                        isDeleted
+                          ? 'opacity-50'
+                          : 'text-blue-600 cursor-pointer underline transition-colors hover:text-blue-700'
+                      }
+                      onClick={() =>
+                        isDeleted ? null : handleOpenFolder(folder.path)
+                      }
                     >
                       {getDisplayPath(folder.path)}
                     </span>
                     {folder.error && (
-                      <div className="text-red-600 text-[12px] italic">{folder.error}</div>
+                      <div className="text-red-600 text-[12px] italic">
+                        {folder.error}
+                      </div>
                     )}
                   </td>
-                  <td className="text-right p-2.5 text-[13px] border-b border-gray-200">{formatSize(folder.sizeBytes)}</td>
+                  <td
+                    className={
+                      (isDeleted ? 'opacity-50' : '') +
+                      ' text-right p-2.5 text-[13px] border-b border-gray-200'
+                    }
+                  >
+                    {formatSize(folder.sizeBytes)}
+                  </td>
                   <td className="p-2.5 text-[13px] border-b border-gray-200">
                     <span className={getStatusClass(folder.status)}>
                       {folder.status}
