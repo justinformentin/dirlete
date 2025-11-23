@@ -1,7 +1,9 @@
 use crate::cleaner::models::*;
 use crate::cleaner::{delete, scan};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 #[tauri::command]
 pub async fn scan_dirs(request: ScanRequest, app_handle: AppHandle) -> Result<(), String> {
@@ -10,6 +12,13 @@ pub async fn scan_dirs(request: ScanRequest, app_handle: AppHandle) -> Result<()
         scan::scan_dirs_with_progress(&request, app_handle);
     });
 
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_scan(app_handle: AppHandle) -> Result<(), String> {
+    let cancel_flag = app_handle.state::<Arc<AtomicBool>>();
+    cancel_flag.store(true, Ordering::Relaxed);
     Ok(())
 }
 

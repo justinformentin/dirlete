@@ -5,12 +5,15 @@ mod cleaner;
 mod commands;
 
 use commands::*;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![scan_dirs, start_delete_job, open_folder])
+        .manage(Arc::new(AtomicBool::new(false)))
+        .invoke_handler(tauri::generate_handler![scan_dirs, cancel_scan, start_delete_job, open_folder])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

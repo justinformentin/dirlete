@@ -4,6 +4,7 @@ interface ScanControlsProps {
   skipNested: boolean;
   onSkipNestedChange: (skip: boolean) => void;
   onScan: () => void;
+  onCancelScan: () => void;
   isScanning: boolean;
   disabled?: boolean;
 }
@@ -12,6 +13,7 @@ const ScanControls: React.FC<ScanControlsProps> = ({
   skipNested,
   onSkipNestedChange,
   onScan,
+  onCancelScan,
   isScanning,
   disabled,
 }) => {
@@ -32,7 +34,7 @@ const ScanControls: React.FC<ScanControlsProps> = ({
           </label>
         </div>
       </div>
-      <div className="mb-0">
+      <div className="mb-0 flex gap-2">
         <button
           onClick={onScan}
           disabled={disabled || isScanning}
@@ -47,6 +49,14 @@ const ScanControls: React.FC<ScanControlsProps> = ({
             'Scan for Folders'
           )}
         </button>
+        {isScanning && (
+          <button
+            onClick={onCancelScan}
+            className="px-4 py-2 bg-red-600 text-white rounded text-sm font-medium transition-colors hover:bg-red-700"
+          >
+            Stop Scan
+          </button>
+        )}
       </div>
     </div>
   );

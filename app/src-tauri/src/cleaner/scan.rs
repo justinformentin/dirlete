@@ -2,7 +2,9 @@ use crate::cleaner::models::*;
 use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
-use tauri::{AppHandle, Emitter};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 
 pub fn scan_dirs(req: &ScanRequest) -> Result<ScanResponse> {
@@ -62,19 +64,39 @@ pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
         .map(|p| p.trim().to_string())
         .collect();
 
+    let ignore_paths: HashSet<String> = req
+        .ignore_paths
+        .iter()
+        .map(|p| p.trim().to_string())
+        .collect();
+
     if patterns.is_empty() {
         let _ = app_handle.emit("scan-complete", ScanCompleteEvent { total: 0 });
         return;
     }
 
+    // Get or create the cancel flag from app state
+    let cancel_flag = app_handle
+        .state::<Arc<AtomicBool>>()
+        .inner()
+        .clone();
+
+    // Reset the cancel flag at the start of a new scan
+    cancel_flag.store(false, Ordering::Relaxed);
+
     let mut count = 0;
 
     if req.skip_nested {
-        scan_dirs_recursive_with_progress(&req.root, &patterns, &app_handle, &mut count);
+        scan_dirs_recursive_with_progress(&req.root, &patterns, &ignore_paths, &cancel_flag, &app_handle, &mut count);
     } else {
         let walker = WalkDir::new(&req.root).follow_links(false);
 
         for entry in walker {
+            // Check if scan was cancelled
+            if cancel_flag.load(Ordering::Relaxed) {
+                break;
+            }
+
             let entry = match entry {
                 Ok(e) => e,
                 Err(_) => continue,
@@ -88,6 +110,11 @@ pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
                 Some(s) => s,
                 None => continue,
             };
+
+            // Skip ignored directories
+            if ignore_paths.contains(name) {
+                continue;
+            }
 
             if patterns.contains(name) {
                 let path = entry.path();
@@ -166,15 +193,27 @@ fn scan_dirs_recursive(
 fn scan_dirs_recursive_with_progress(
     current_path: &str,
     patterns: &HashSet<String>,
+    ignore_paths: &HashSet<String>,
+    cancel_flag: &Arc<AtomicBool>,
     app_handle: &AppHandle,
     count: &mut usize,
 ) {
+    // Check if scan was cancelled
+    if cancel_flag.load(Ordering::Relaxed) {
+        return;
+    }
+
     let entries = match std::fs::read_dir(current_path) {
         Ok(e) => e,
         Err(_) => return,
     };
 
     for entry in entries {
+        // Check if scan was cancelled
+        if cancel_flag.load(Ordering::Relaxed) {
+            return;
+        }
+
         let entry = match entry {
             Ok(e) => e,
             Err(_) => continue,
@@ -193,6 +232,11 @@ fn scan_dirs_recursive_with_progress(
             Some(s) => s.to_string(),
             None => continue,
         };
+
+        // Skip ignored directories
+        if ignore_paths.contains(&name) {
+            continue;
+        }
 
         if patterns.contains(&name) {
             let path = entry.path();
@@ -214,7 +258,7 @@ fn scan_dirs_recursive_with_progress(
 
         // Recurse into non-matching directories
         let path_str = entry.path().to_string_lossy().to_string();
-        scan_dirs_recursive_with_progress(&path_str, patterns, app_handle, count);
+        scan_dirs_recursive_with_progress(&path_str, patterns, ignore_paths, cancel_flag, app_handle, count);
     }
 }
 

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, Event } from '@tauri-apps/api/event';
 import RootPicker from './components/RootPicker';
 import PatternInput from './components/PatternInput';
+import IgnorePathsInput from './components/IgnorePathsInput';
 import ScanControls from './components/ScanControls';
 import ResultsTable from './components/ResultsTable';
 import ProgressBar from './components/ProgressBar';
@@ -21,6 +22,7 @@ import './App.css';
 function App() {
   const [root, setRoot] = useState<string>('');
   const [patterns, setPatterns] = useState<string[]>(['node_modules', '.next']);
+  const [ignorePaths, setIgnorePaths] = useState<string[]>(['.git', '.vscode']);
   const [skipNested, setSkipNested] = useState<boolean>(true);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -157,6 +159,7 @@ function App() {
         root,
         patterns,
         skip_nested: skipNested,
+        ignore_paths: ignorePaths.length > 0 ? ignorePaths : undefined,
       };
 
       // Start scanning - results will come via events
@@ -165,6 +168,15 @@ function App() {
       console.error('Scan error:', error);
       alert(`Error scanning: ${error}`);
       setIsScanning(false);
+    }
+  };
+
+  const handleCancelScan = async () => {
+    try {
+      await invoke('cancel_scan');
+      setIsScanning(false);
+    } catch (error) {
+      console.error('Cancel scan error:', error);
     }
   };
 
@@ -263,10 +275,16 @@ function App() {
           onPatternsChange={setPatterns}
           disabled={isDeleting}
         />
+        <IgnorePathsInput
+          ignorePaths={ignorePaths}
+          onIgnorePathsChange={setIgnorePaths}
+          disabled={isDeleting}
+        />
         <ScanControls
           skipNested={skipNested}
           onSkipNestedChange={setSkipNested}
           onScan={handleScan}
+          onCancelScan={handleCancelScan}
           isScanning={isScanning}
           disabled={isDeleting}
         />

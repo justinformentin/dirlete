@@ -4,6 +4,7 @@ export interface ScanRequest {
   root: string;
   patterns: string[];
   skip_nested: boolean;
+  ignore_paths?: string[];
 }
 
 export interface ScanFolderMatch {
