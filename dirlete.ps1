@@ -3,7 +3,7 @@ Add-Type -AssemblyName System.Drawing
 
 # ---------- Form ----------
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Folder Cleaner"
+$form.Text = "Dirlete"
 $form.Size = New-Object System.Drawing.Size(800, 600)
 $form.StartPosition = "CenterScreen"
 
@@ -48,27 +48,26 @@ $form.Controls.Add($btnScan)
 $btnDelete = New-Object System.Windows.Forms.Button
 $btnDelete.Text = "Delete Selected"
 $btnDelete.Location = New-Object System.Drawing.Point(100, 95)
-$btnDelete.Size = New-Object System.Drawing.Size(100, 30)
+$btnDelete.Size = New-Object System.Drawing.Size(110, 30)
 $btnDelete.Enabled = $false
 $form.Controls.Add($btnDelete)
 
 $btnClose = New-Object System.Windows.Forms.Button
 $btnClose.Text = "Close"
-$btnClose.Location = New-Object System.Drawing.Point(210, 95)
+$btnClose.Location = New-Object System.Drawing.Point(220, 95)
 $btnClose.Size = New-Object System.Drawing.Size(80, 30)
 $form.Controls.Add($btnClose)
 
-# Optional: Select All / Deselect All
 $btnSelectAll = New-Object System.Windows.Forms.Button
 $btnSelectAll.Text = "Select All"
-$btnSelectAll.Location = New-Object System.Drawing.Point(300, 95)
+$btnSelectAll.Location = New-Object System.Drawing.Point(310, 95)
 $btnSelectAll.Size = New-Object System.Drawing.Size(80, 30)
 $btnSelectAll.Enabled = $false
 $form.Controls.Add($btnSelectAll)
 
 $btnDeselectAll = New-Object System.Windows.Forms.Button
 $btnDeselectAll.Text = "Deselect All"
-$btnDeselectAll.Location = New-Object System.Drawing.Point(390, 95)
+$btnDeselectAll.Location = New-Object System.Drawing.Point(400, 95)
 $btnDeselectAll.Size = New-Object System.Drawing.Size(90, 30)
 $btnDeselectAll.Enabled = $false
 $form.Controls.Add($btnDeselectAll)
@@ -115,18 +114,18 @@ $btnBrowse.Add_Click({
 function Set-UIBusy([bool]$busy, [string]$statusText) {
     if ($busy) {
         $form.Cursor = [System.Windows.Forms.Cursors]::WaitCursor
-        $progressBar.Style = 'Marquee'
     } else {
         $form.Cursor = [System.Windows.Forms.Cursors]::Default
         $progressBar.Style = 'Blocks'
         $progressBar.Value = 0
     }
-    $btnScan.Enabled = -not $busy
-    $btnDelete.Enabled = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
-    $btnBrowse.Enabled = -not $busy
-    $txtRoot.Enabled = -not $busy
-    $txtNames.Enabled = -not $busy
-    $btnSelectAll.Enabled = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
+
+    $btnScan.Enabled        = -not $busy
+    $btnDelete.Enabled      = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
+    $btnBrowse.Enabled      = -not $busy
+    $txtRoot.Enabled        = -not $busy
+    $txtNames.Enabled       = -not $busy
+    $btnSelectAll.Enabled   = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
     $btnDeselectAll.Enabled = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
 
     if ($statusText) {
@@ -169,28 +168,36 @@ function Get-MatchingFoldersTopLevel {
 $btnScan.Add_Click({
     $root = $txtRoot.Text.Trim()
     if (-not (Test-Path $root)) {
-        [System.Windows.Forms.MessageBox]::Show("Please select a valid root folder.",
-            "Invalid folder", 'OK', 'Error') | Out-Null
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please select a valid root folder.",
+            "Invalid folder",
+            'OK',
+            'Error'
+        ) | Out-Null
         return
     }
 
     $nameInput = $txtNames.Text
     $names = $nameInput.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
     if ($names.Count -eq 0) {
-        [System.Windows.Forms.MessageBox]::Show("Please enter at least one folder name to delete.",
-            "No folder names", 'OK', 'Error') | Out-Null
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter at least one folder name to delete.",
+            "No folder names",
+            'OK',
+            'Error'
+        ) | Out-Null
         return
     }
 
     $listBox.Items.Clear()
     Set-UIBusy $true "Scanning..."
+    $progressBar.Style = 'Marquee'
 
     try {
-        # Use custom recursive function that stops recursing once a match is found
         $dirs = Get-MatchingFoldersTopLevel -RootPath $root -Names $names
 
         foreach ($d in $dirs) {
-            [void]$listBox.Items.Add($d, $true) # default to checked
+            [void]$listBox.Items.Add($d, $true)  # default to checked
         }
 
         $count = $listBox.Items.Count
@@ -199,7 +206,9 @@ $btnScan.Add_Click({
         Set-UIBusy $false "Error during scan."
         [System.Windows.Forms.MessageBox]::Show(
             "An error occurred during scan:`r`n$($_.Exception.Message)",
-            "Error", 'OK', 'Error'
+            "Error",
+            'OK',
+            'Error'
         ) | Out-Null
     }
 })
@@ -214,6 +223,81 @@ $btnSelectAll.Add_Click({
 $btnDeselectAll.Add_Click({
     for ($i = 0; $i -lt $listBox.Items.Count; $i++) {
         $listBox.SetItemChecked($i, $false)
+    }
+})
+
+# ---------- Background worker for delete ----------
+$script:pathsToDelete = @()
+
+$deleteWorker = New-Object System.ComponentModel.BackgroundWorker
+$deleteWorker.WorkerReportsProgress = $true
+
+# DoWork: runs on background thread
+$deleteWorker.add_DoWork({
+    param($sender, $e)
+
+    $deleted = 0
+    $errors  = 0
+    $total   = $script:pathsToDelete.Count
+
+    for ($i = 0; $i -lt $total; $i++) {
+        $path = $script:pathsToDelete[$i]
+
+        try {
+            if (Test-Path $path) {
+                Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop
+                $deleted++
+            }
+        } catch {
+            $errors++
+        }
+
+        if ($total -gt 0) {
+            $percent = [int](($i + 1) * 100 / $total)
+            $sender.ReportProgress($percent)
+        }
+    }
+
+    $e.Result = [pscustomobject]@{
+        Deleted = $deleted
+        Errors  = $errors
+    }
+})
+
+# ProgressChanged: runs on UI thread
+$deleteWorker.add_ProgressChanged({
+    param($sender, $e)
+
+    if ($e.ProgressPercentage -ge $progressBar.Minimum -and $e.ProgressPercentage -le $progressBar.Maximum) {
+        $progressBar.Value = $e.ProgressPercentage
+    }
+    $lblStatus.Text = "Status: Deleting... $($e.ProgressPercentage)%"
+})
+
+# RunWorkerCompleted: runs on UI thread
+$deleteWorker.add_RunWorkerCompleted({
+    param($sender, $e)
+
+    $result = $e.Result
+
+    # Remove deleted items from the listBox
+    for ($i = $listBox.Items.Count - 1; $i -ge 0; $i--) {
+        if ($script:pathsToDelete -contains $listBox.Items[$i]) {
+            $listBox.Items.RemoveAt($i)
+        }
+    }
+
+    $script:pathsToDelete = @()
+
+    Set-UIBusy $false ("Delete complete. Deleted {0}, errors {1}." -f $result.Deleted, $result.Errors)
+
+    if ($result.Errors -gt 0) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Finished deleting with $($result.Errors) error(s). Some folders may have been locked or protected.",
+            "Completed with errors",
+            'OK',
+            'Information'
+        ) | Out-Null
     }
 })
 
@@ -239,50 +323,15 @@ $btnDelete.Add_Click({
 
     if ($confirm -ne 'Yes') { return }
 
+    $script:pathsToDelete = $checked
+
     Set-UIBusy $true "Deleting folders..."
     $progressBar.Style = 'Blocks'
     $progressBar.Minimum = 0
-    $progressBar.Maximum = $checked.Count
+    $progressBar.Maximum = 100
     $progressBar.Value = 0
 
-    $deleted = 0
-    $errors = 0
-
-    foreach ($path in $checked) {
-        try {
-            if (Test-Path $path) {
-                Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop
-                $deleted++
-            }
-        } catch {
-            $errors++
-        }
-
-        if ($progressBar.Value -lt $progressBar.Maximum) {
-            $progressBar.Value++
-        }
-
-        # Let the UI process messages so it doesn't show "Not Responding"
-        [System.Windows.Forms.Application]::DoEvents()
-    }
-
-    # After we're done deleting, remove checked items from the list
-    for ($i = $listBox.Items.Count - 1; $i -ge 0; $i--) {
-        if ($listBox.GetItemChecked($i)) {
-            $listBox.Items.RemoveAt($i)
-        }
-    }
-
-    Set-UIBusy $false "Delete complete. Deleted $deleted, errors $errors."
-
-    if ($errors -gt 0) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Finished deleting with $errors error(s). Some folders may have been locked or protected.",
-            "Completed with errors",
-            'OK',
-            'Information'
-        ) | Out-Null
-    }
+    $deleteWorker.RunWorkerAsync()
 })
 
 # ---------- Close handler ----------
