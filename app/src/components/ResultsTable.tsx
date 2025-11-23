@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { FolderRow } from '../types/ipc';
 
 type SortField = 'path' | 'size';
@@ -98,6 +99,15 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
     return fullPath;
   };
 
+  const handleOpenFolder = async (path: string) => {
+    try {
+      await invoke('open_folder', { path });
+    } catch (error) {
+      console.error('Failed to open folder:', error);
+      alert(`Failed to open folder: ${error}`);
+    }
+  };
+
   return (
     <div>
       <div className="results-header">
@@ -144,7 +154,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ folders, rootPath, onToggle
                     />
                   </td>
                   <td className="path-cell" title={folder.path}>
-                    {getDisplayPath(folder.path)}
+                    <span
+                      className="path-link"
+                      onClick={() => handleOpenFolder(folder.path)}
+                    >
+                      {getDisplayPath(folder.path)}
+                    </span>
                     {folder.error && (
                       <div className="error-cell">{folder.error}</div>
                     )}

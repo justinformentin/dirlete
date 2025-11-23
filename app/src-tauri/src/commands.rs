@@ -1,6 +1,7 @@
 use crate::cleaner::models::*;
 use crate::cleaner::{delete, scan};
 use tauri::AppHandle;
+use std::process::Command;
 
 #[tauri::command]
 pub async fn scan_dirs(request: ScanRequest, app_handle: AppHandle) -> Result<(), String> {
@@ -28,6 +29,35 @@ pub async fn start_delete_job(
     delete::start_delete_job(app_handle, job_id.clone(), request.folders);
 
     Ok(DeleteJobStartResponse { job_id })
+}
+
+#[tauri::command]
+pub async fn open_folder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    Ok(())
 }
 
 // Optional: Cancel functionality would require shared state management

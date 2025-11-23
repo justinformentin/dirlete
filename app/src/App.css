@@ -226,6 +226,17 @@ tr:hover {
   white-space: nowrap;
 }
 
+.path-link {
+  color: #2c67e2;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.path-link:hover {
+  color: #1e4fc4;
+}
+
 .status-badge {
   display: inline-block;
   padding: 4px 8px;
