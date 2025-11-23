@@ -25,4 +25,5 @@ Invoke-ps2exe `
   -company "Formentin" `
   -product "Dirlete" `
   -version $version `
-  -copyright "© Formentin"
+  -copyright "© Formentin" `
+  -noConsole
