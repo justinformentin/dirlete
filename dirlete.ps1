@@ -247,6 +247,39 @@ $btnDeselectAll.Add_Click({
 })
 
 $workerTimer.Add_Tick({
+    # 1) If worker is still running, just update progress and return
+    if ($global:workerProcess -and -not $global:workerProcess.HasExited) {
+
+        if ($global:workerProgressFile -and (Test-Path -LiteralPath $global:workerProgressFile)) {
+            try {
+                $pjson = Get-Content -LiteralPath $global:workerProgressFile -Raw
+                if ($pjson) {
+                    $p = $pjson | ConvertFrom-Json
+                    $total     = [int]$p.Total
+                    $completed = [int]$p.Completed
+
+                    if ($total -le 0 -and $global:workerTotalCount) {
+                        $total = [int]$global:workerTotalCount
+                    }
+
+                    if ($total -gt 0) {
+                        $progressBar.Style   = 'Blocks'
+                        $progressBar.Minimum = 0
+                        $progressBar.Maximum = $total
+                        $progressBar.Value   = [math]::Min($completed, $total)
+
+                        $lblStatus.Text = "Status: Deleting folders... $completed/$total"
+                    }
+                }
+            } catch {
+                # ignore progress parse errors
+            }
+        }
+
+        return
+    }
+
+    # 2) Worker has exited: existing finalization logic goes here
     if ($global:workerProcess -and $global:workerProcess.HasExited) {
         $workerTimer.Stop()
 
@@ -303,7 +336,7 @@ $workerTimer.Add_Tick({
             }
         }
 
-        # Mark failed with reasons
+        # Mark failed with reasons (same as we already had)
         $failedSummaryLines = @()
 
         foreach ($failure in $failed) {
@@ -318,7 +351,6 @@ $workerTimer.Add_Tick({
 
             $display = "[FAILED] $p — $err"
 
-            # Try to update existing line if present
             $idx = $listBox.Items.IndexOf($p)
             if ($idx -ge 0) {
                 $listBox.Items[$idx] = $display
@@ -344,8 +376,10 @@ $workerTimer.Add_Tick({
         }
 
         # Cleanup
-        $global:workerProcess    = $null
-        $global:workerOutputFile = $null
+        $global:workerProcess      = $null
+        $global:workerOutputFile   = $null
+        $global:workerProgressFile = $null
+        $global:workerTotalCount   = $null
     }
 })
 
@@ -427,12 +461,16 @@ $btnDelete.Add_Click({
         return
     }
 
-    # Temp input/output files
-    $tempDir    = [System.IO.Path]::GetTempPath()
-    $inputFile  = Join-Path $tempDir ("dirlete_input_"  + [guid]::NewGuid().ToString() + ".txt")
-    $outputFile = Join-Path $tempDir ("dirlete_output_" + [guid]::NewGuid().ToString() + ".json")
+    # Temp input/output/progress files
+    $tempDir      = [System.IO.Path]::GetTempPath()
+    $inputFile    = Join-Path $tempDir ("dirlete_input_"    + [guid]::NewGuid().ToString() + ".txt")
+    $outputFile   = Join-Path $tempDir ("dirlete_output_"   + [guid]::NewGuid().ToString() + ".json")
+    $progressFile = Join-Path $tempDir ("dirlete_progress_" + [guid]::NewGuid().ToString() + ".json")
 
-    if ([string]::IsNullOrWhiteSpace($inputFile) -or [string]::IsNullOrWhiteSpace($outputFile)) {
+    if ([string]::IsNullOrWhiteSpace($inputFile) -or
+        [string]::IsNullOrWhiteSpace($outputFile) -or
+        [string]::IsNullOrWhiteSpace($progressFile)) {
+
         [System.Windows.Forms.MessageBox]::Show(
             "Failed to create temporary file paths.",
             "Error",
@@ -455,13 +493,15 @@ $btnDelete.Add_Click({
         return
     }
 
-    # Remember output file for timer
-    $global:workerOutputFile = $outputFile
+    # Remember files for timer
+    $global:workerOutputFile   = $outputFile
+    $global:workerProgressFile = $progressFile
+    $global:workerTotalCount   = $paths.Count
 
     # Start worker process (no window)
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $workerExe
-    $psi.Arguments = '"' + $inputFile + '" "' + $outputFile + '"'
+    $psi.Arguments = '"' + $inputFile + '" "' + $outputFile + '" "' + $progressFile + '"'
     $psi.CreateNoWindow = $true
     $psi.UseShellExecute = $false
 
@@ -478,8 +518,12 @@ $btnDelete.Add_Click({
     }
 
     # UI updates while worker runs
-    Set-UIBusy $true "Deleting folders..."
-    $progressBar.Style = 'Marquee'
+    $progressBar.Style   = 'Blocks'
+    $progressBar.Minimum = 0
+    $progressBar.Maximum = [math]::Max(1, $paths.Count)
+    $progressBar.Value   = 0
+
+    Set-UIBusy $true "Deleting folders... 0/$($paths.Count)"
     $workerTimer.Start()
 })
 

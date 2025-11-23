@@ -1,12 +1,37 @@
 param(
     [string]$InputFile,
-    [string]$OutputFile
+    [string]$OutputFile,
+    [string]$ProgressFile
 )
 
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($InputFile) -or [string]::IsNullOrWhiteSpace($OutputFile)) {
     return
+}
+
+function Write-ProgressState {
+    param(
+        [int]$Completed,
+        [int]$Total,
+        [string]$CurrentPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ProgressFile)) {
+        return
+    }
+
+    try {
+        $obj = [pscustomobject]@{
+            Total       = $Total
+            Completed   = $Completed
+            CurrentPath = $CurrentPath
+        }
+        $json = $obj | ConvertTo-Json -Depth 3
+        $json | Set-Content -LiteralPath $ProgressFile -Encoding UTF8
+    } catch {
+        # ignore progress write errors
+    }
 }
 
 function Remove-DirWithFixes {
@@ -21,12 +46,10 @@ function Remove-DirWithFixes {
         Notes    = @()
     }
 
-    # Helper to add attempt note
     function Add-Attempt([string]$text) {
         $failure.Attempts += $text
     }
 
-    # 0) Ensure it exists
     if (-not [System.IO.Directory]::Exists($Path)) {
         $failure.Error = "Directory does not exist"
         $failure.Notes += "Directory missing before delete."
@@ -42,7 +65,7 @@ function Remove-DirWithFixes {
         Add-Attempt "Initial delete failed: $($failure.Error)"
     }
 
-    # 2) Clear attributes (hidden/readonly/system) and retry
+    # 2) Clear attributes and retry
     try {
         if (Test-Path -LiteralPath $Path) {
             Get-ChildItem -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue |
@@ -62,7 +85,7 @@ function Remove-DirWithFixes {
         Add-Attempt "After clearing attributes: $($_.Exception.Message)"
     }
 
-    # 3) Long path delete (use \\?\ prefix if needed)
+    # 3) Long path delete with \\?\ prefix
     try {
         if (Test-Path -LiteralPath $Path) {
             $longPath = $Path
@@ -78,7 +101,7 @@ function Remove-DirWithFixes {
         Add-Attempt "Long-path delete attempt failed: $($_.Exception.Message)"
     }
 
-    # 4) Nuclear option: robocopy /MIR from empty dir, then delete
+    # 4) Nuclear: robocopy /MIR from empty dir, then Remove-Item
     try {
         if (Test-Path -LiteralPath $Path) {
             $tempRoot = [System.IO.Path]::GetTempPath()
@@ -109,7 +132,6 @@ function Remove-DirWithFixes {
 
             $failure.Notes += "robocopy exit code $code."
 
-            # robocopy: codes < 8 are "success-ish"
             if ($code -lt 8) {
                 try {
                     if (Test-Path -LiteralPath $Path) {
@@ -127,7 +149,7 @@ function Remove-DirWithFixes {
         Add-Attempt "robocopy attempt threw: $($_.Exception.Message)"
     }
 
-    # 5) Locking-process hint (and optional handle.exe integration)
+    # 5) Locking-process hint (+ optional handle.exe)
     $allMessages = ($failure.Attempts + $failure.Error) -join " "
     if ($allMessages -match "being used by another process") {
         $failure.Notes += "Likely locked by another process (editor, terminal, node, antivirus, etc.). Close tools using this folder and retry."
@@ -142,7 +164,7 @@ function Remove-DirWithFixes {
                 $failure.Notes += "Tried handle.exe but it failed: $($_.Exception.Message)"
             }
         } else {
-            $failure.Notes += "Install Sysinternals 'handle.exe' and make sure it's on PATH to see which processes hold locks."
+            $failure.Notes += "Install Sysinternals 'handle.exe' and put it on PATH to see which processes hold locks."
         }
     }
 
@@ -160,16 +182,26 @@ try {
     }
 
     $paths = Get-Content -LiteralPath $InputFile | Where-Object { $_ -and $_.Trim() -ne "" }
+    $total = $paths.Count
+    $completed = 0
+
+    # Initial progress
+    Write-ProgressState -Completed $completed -Total $total -CurrentPath ""
 
     foreach ($p in $paths) {
         $path = $p.Trim()
         $info = Remove-DirWithFixes -Path $path
+
+        $completed++
 
         if ($info.Success) {
             $result.Succeeded += $path
         } elseif ($info.Details) {
             $result.Failed += $info.Details
         }
+
+        # Update progress after each folder
+        Write-ProgressState -Completed $completed -Total $total -CurrentPath $path
     }
 }
 catch {
@@ -181,10 +213,8 @@ catch {
     }
 }
 
-# Write JSON summary
+# Final write of summary
 try {
     $json = $result | ConvertTo-Json -Depth 6
     $json | Set-Content -LiteralPath $OutputFile -Encoding UTF8
-} catch {
-    # ignore
-}
+} catch {}
