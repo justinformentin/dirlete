@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { listen, Event } from '@tauri-apps/api/event';
 import RootPicker from './components/RootPicker';
 import PatternInput from './components/PatternInput';
 import ScanControls from './components/ScanControls';
@@ -27,95 +27,113 @@ function App() {
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
   const [deleteTotal, setDeleteTotal] = useState<number>(0);
   const [deleteCompleted, setDeleteCompleted] = useState<number>(0);
-  const [currentDeletingPath, setCurrentDeletingPath] = useState<string | null>(null);
+  const [currentDeletingPath, setCurrentDeletingPath] = useState<string | null>(
+    null
+  );
+  const unsubscribers = useRef<Array<() => void>>([]);
 
-  // Set up event listeners on mount
-  useEffect(() => {
-    const unsubscribers: Array<() => void> = [];
-
-    // Listen for scan progress events
-    listen<ScanProgressEvent>('scan-progress', (event) => {
-      const { folder } = event.payload;
-      setFolders((prev) => [
+  const scanProgress = (event: Event<ScanProgressEvent>) => {
+    const { folder } = event.payload;
+    setFolders((prev) => {
+      // Check if this folder already exists (prevent duplicates)
+      if (prev.some((f) => f.path === folder.path)) {
+        return prev;
+      }
+      return [
         ...prev,
         {
           path: folder.path,
           sizeBytes: folder.sizeBytes,
           status: 'selected',
         },
-      ]);
-    }).then((unsub) => {
-      unsubscribers.push(unsub);
+      ];
     });
+  };
+
+  const scanComplete = () => setIsScanning(false);
+
+  const deleteProgress = (event: Event<DeleteProgressEvent>) => {
+    const payload = event.payload;
+    setDeleteJobId(payload.jobId);
+    setDeleteTotal(payload.total);
+    setDeleteCompleted(payload.completed);
+    setCurrentDeletingPath(payload.currentPath ?? null);
+
+    if (payload.currentPath) {
+      setFolders((prev) =>
+        prev.map((f) =>
+          f.path === payload.currentPath ? { ...f, status: 'deleting' } : f
+        )
+      );
+    }
+  };
+  const deleteComplete = (event: Event<DeleteCompleteEvent>) => {
+    const { succeeded, failed } = event.payload;
+
+    setDeleteJobId(null);
+    setCurrentDeletingPath(null);
+
+    setFolders((prev) => {
+      let next = [...prev];
+
+      // Mark succeeded folders
+      next = next.map((f) =>
+        succeeded.includes(f.path)
+          ? { ...f, status: 'deleted', error: undefined }
+          : f
+      );
+
+      // Mark failed folders
+      failed.forEach((fd) => {
+        const reason = fd.error || fd.attempts?.[0] || 'Unknown error';
+        const idx = next.findIndex((f) => f.path === fd.path);
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], status: 'failed', error: reason };
+        } else {
+          next.push({
+            path: fd.path,
+            sizeBytes: null,
+            status: 'failed',
+            error: reason,
+          });
+        }
+      });
+
+      return next;
+    });
+  };
+  const setupListeners = async () => {
+    // Listen for scan progress events
+    const prog = await listen<ScanProgressEvent>('scan-progress', scanProgress);
+    unsubscribers.current = [...unsubscribers.current, prog];
 
     // Listen for scan complete events
-    listen<ScanCompleteEvent>('scan-complete', () => {
-      setIsScanning(false);
-    }).then((unsub) => {
-      unsubscribers.push(unsub);
-    });
+    const completeScan = await listen<ScanCompleteEvent>(
+      'scan-complete',
+      scanComplete
+    );
+    unsubscribers.current = [...unsubscribers.current, completeScan];
 
     // Listen for delete progress events
-    listen<DeleteProgressEvent>('delete-progress', (event) => {
-      const payload = event.payload;
-      setDeleteJobId(payload.jobId);
-      setDeleteTotal(payload.total);
-      setDeleteCompleted(payload.completed);
-      setCurrentDeletingPath(payload.currentPath ?? null);
-
-      if (payload.currentPath) {
-        setFolders((prev) =>
-          prev.map((f) =>
-            f.path === payload.currentPath ? { ...f, status: 'deleting' } : f
-          )
-        );
-      }
-    }).then((unsub) => {
-      unsubscribers.push(unsub);
-    });
+    const deleteProg = await listen<DeleteProgressEvent>(
+      'delete-progress',
+      deleteProgress
+    );
+    unsubscribers.current = [...unsubscribers.current, deleteProg];
 
     // Listen for delete complete events
-    listen<DeleteCompleteEvent>('delete-complete', (event) => {
-      const { succeeded, failed } = event.payload;
-
-      setDeleteJobId(null);
-      setCurrentDeletingPath(null);
-
-      setFolders((prev) => {
-        let next = [...prev];
-
-        // Mark succeeded folders
-        next = next.map((f) =>
-          succeeded.includes(f.path)
-            ? { ...f, status: 'deleted', error: undefined }
-            : f
-        );
-
-        // Mark failed folders
-        failed.forEach((fd) => {
-          const reason = fd.error || fd.attempts?.[0] || 'Unknown error';
-          const idx = next.findIndex((f) => f.path === fd.path);
-          if (idx >= 0) {
-            next[idx] = { ...next[idx], status: 'failed', error: reason };
-          } else {
-            next.push({
-              path: fd.path,
-              sizeBytes: null,
-              status: 'failed',
-              error: reason,
-            });
-          }
-        });
-
-        return next;
-      });
-    }).then((unsub) => {
-      unsubscribers.push(unsub);
-    });
-
+    const completed = await listen<DeleteCompleteEvent>(
+      'delete-complete',
+      deleteComplete
+    );
+    unsubscribers.current = [...unsubscribers.current, completed];
+  };
+  // Set up event listeners on mount
+  useEffect(() => {
+    setupListeners();
     // Cleanup listeners on unmount
     return () => {
-      unsubscribers.forEach((unsub) => unsub());
+      unsubscribers.current.forEach((unsub) => unsub());
     };
   }, []);
 
@@ -183,7 +201,9 @@ function App() {
   };
 
   const handleDeleteSelected = async () => {
-    const toDelete = folders.filter((f) => f.status === 'selected').map((f) => f.path);
+    const toDelete = folders
+      .filter((f) => f.status === 'selected')
+      .map((f) => f.path);
 
     if (toDelete.length === 0) {
       alert('No folders selected for deletion.');
@@ -203,7 +223,10 @@ function App() {
         folders: toDelete,
       };
 
-      const response = await invoke<DeleteJobStartResponse>('start_delete_job', { request });
+      const response = await invoke<DeleteJobStartResponse>(
+        'start_delete_job',
+        { request }
+      );
 
       setDeleteJobId(response.jobId);
       setDeleteTotal(toDelete.length);
@@ -264,7 +287,9 @@ function App() {
               onClick={handleDeleteSelected}
               disabled={selectedCount === 0 || isDeleting || isScanning}
             >
-              {isDeleting ? 'Deleting...' : `Delete ${selectedCount} Selected Folder(s)`}
+              {isDeleting
+                ? 'Deleting...'
+                : `Delete ${selectedCount} Selected Folder(s)`}
             </button>
           </div>
         )}
