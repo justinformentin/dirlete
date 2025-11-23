@@ -6,6 +6,29 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
+use wildmatch::WildMatch;
+
+/// Helper function to check if a folder name matches any of the patterns
+fn matches_pattern(name: &str, patterns: &HashSet<String>, pattern_matchers: &[WildMatch], use_glob: bool) -> bool {
+    if use_glob {
+        // Use glob pattern matching
+        pattern_matchers.iter().any(|m| m.matches(name))
+    } else {
+        // Use exact string matching (fast path)
+        patterns.contains(name)
+    }
+}
+
+/// Helper function to check if a folder should be ignored
+fn should_ignore(name: &str, ignore_paths: &HashSet<String>, ignore_matchers: &[WildMatch], use_glob: bool) -> bool {
+    if use_glob {
+        // Use glob pattern matching
+        ignore_matchers.iter().any(|m| m.matches(name))
+    } else {
+        // Use exact string matching (fast path)
+        ignore_paths.contains(name)
+    }
+}
 
 pub fn scan_dirs(req: &ScanRequest) -> Result<ScanResponse> {
     let mut matches = Vec::new();
@@ -70,6 +93,19 @@ pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
         .map(|p| p.trim().to_string())
         .collect();
 
+    // Create glob matchers if glob mode is enabled
+    let pattern_matchers: Vec<WildMatch> = if req.use_glob_patterns {
+        req.patterns.iter().map(|p| WildMatch::new(p.trim())).collect()
+    } else {
+        Vec::new()
+    };
+
+    let ignore_matchers: Vec<WildMatch> = if req.use_glob_patterns {
+        req.ignore_paths.iter().map(|p| WildMatch::new(p.trim())).collect()
+    } else {
+        Vec::new()
+    };
+
     if patterns.is_empty() {
         let _ = app_handle.emit("scan-complete", ScanCompleteEvent { total: 0 });
         return;
@@ -87,7 +123,17 @@ pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
     let mut count = 0;
 
     if req.skip_nested {
-        scan_dirs_recursive_with_progress(&req.root, &patterns, &ignore_paths, &cancel_flag, &app_handle, &mut count);
+        scan_dirs_recursive_with_progress(
+            &req.root,
+            &patterns,
+            &ignore_paths,
+            &pattern_matchers,
+            &ignore_matchers,
+            req.use_glob_patterns,
+            &cancel_flag,
+            &app_handle,
+            &mut count
+        );
     } else {
         let walker = WalkDir::new(&req.root).follow_links(false);
 
@@ -112,11 +158,11 @@ pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
             };
 
             // Skip ignored directories
-            if ignore_paths.contains(name) {
+            if should_ignore(name, &ignore_paths, &ignore_matchers, req.use_glob_patterns) {
                 continue;
             }
 
-            if patterns.contains(name) {
+            if matches_pattern(name, &patterns, &pattern_matchers, req.use_glob_patterns) {
                 let path = entry.path();
                 let path_str = path.to_string_lossy().to_string();
                 let size_bytes = calculate_dir_size(path);
@@ -194,6 +240,9 @@ fn scan_dirs_recursive_with_progress(
     current_path: &str,
     patterns: &HashSet<String>,
     ignore_paths: &HashSet<String>,
+    pattern_matchers: &[WildMatch],
+    ignore_matchers: &[WildMatch],
+    use_glob: bool,
     cancel_flag: &Arc<AtomicBool>,
     app_handle: &AppHandle,
     count: &mut usize,
@@ -234,11 +283,11 @@ fn scan_dirs_recursive_with_progress(
         };
 
         // Skip ignored directories
-        if ignore_paths.contains(&name) {
+        if should_ignore(&name, ignore_paths, ignore_matchers, use_glob) {
             continue;
         }
 
-        if patterns.contains(&name) {
+        if matches_pattern(&name, patterns, pattern_matchers, use_glob) {
             let path = entry.path();
             let path_str = path.to_string_lossy().to_string();
             let size_bytes = calculate_dir_size(&path);
@@ -258,7 +307,17 @@ fn scan_dirs_recursive_with_progress(
 
         // Recurse into non-matching directories
         let path_str = entry.path().to_string_lossy().to_string();
-        scan_dirs_recursive_with_progress(&path_str, patterns, ignore_paths, cancel_flag, app_handle, count);
+        scan_dirs_recursive_with_progress(
+            &path_str,
+            patterns,
+            ignore_paths,
+            pattern_matchers,
+            ignore_matchers,
+            use_glob,
+            cancel_flag,
+            app_handle,
+            count
+        );
     }
 }
 

@@ -5,6 +5,7 @@ export interface ScanRequest {
   patterns: string[];
   skip_nested: boolean;
   ignore_paths?: string[];
+  use_glob_patterns?: boolean;
 }
 
 export interface ScanFolderMatch {

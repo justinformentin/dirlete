@@ -3,6 +3,8 @@ import React from 'react';
 interface ScanControlsProps {
   skipNested: boolean;
   onSkipNestedChange: (skip: boolean) => void;
+  useGlobPatterns: boolean;
+  onUseGlobPatternsChange: (use: boolean) => void;
   onScan: () => void;
   onCancelScan: () => void;
   isScanning: boolean;
@@ -12,6 +14,8 @@ interface ScanControlsProps {
 const ScanControls: React.FC<ScanControlsProps> = ({
   skipNested,
   onSkipNestedChange,
+  useGlobPatterns,
+  onUseGlobPatternsChange,
   onScan,
   onCancelScan,
   isScanning,
@@ -19,7 +23,7 @@ const ScanControls: React.FC<ScanControlsProps> = ({
 }) => {
   return (
     <div>
-      <div className="mb-4">
+      <div className="mb-4 space-y-2">
         <div className="flex items-center gap-2">
           <input
             id="skip-nested"
@@ -33,6 +37,22 @@ const ScanControls: React.FC<ScanControlsProps> = ({
             Skip nested matches (don't scan inside matched folders)
           </label>
         </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="use-glob-patterns"
+            type="checkbox"
+            checked={useGlobPatterns}
+            onChange={(e) => onUseGlobPatternsChange(e.target.checked)}
+            disabled={disabled}
+            className="w-[18px] h-[18px] cursor-pointer disabled:cursor-not-allowed"
+          />
+          <label htmlFor="use-glob-patterns" className="cursor-pointer select-none text-sm font-medium text-gray-800">
+            Use wildcard patterns (* and ?)
+          </label>
+        </div>
+        <p className="ml-6 text-xs text-gray-500">
+          Examples: <code className="bg-gray-200 px-1 rounded">node_*</code> matches <code className="bg-gray-200 px-1 rounded">node_modules</code>, <code className="bg-gray-200 px-1 rounded">node_env</code> | <code className="bg-gray-200 px-1 rounded">*cache</code> matches <code className="bg-gray-200 px-1 rounded">.cache</code>, <code className="bg-gray-200 px-1 rounded">npm-cache</code>
+        </p>
       </div>
       <div className="mb-0 flex gap-2">
         <button

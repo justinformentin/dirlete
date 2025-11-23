@@ -7,6 +7,8 @@ pub struct ScanRequest {
     pub skip_nested: bool,
     #[serde(default)]
     pub ignore_paths: Vec<String>,
+    #[serde(default)]
+    pub use_glob_patterns: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]

@@ -24,6 +24,7 @@ function App() {
   const [patterns, setPatterns] = useState<string[]>(['node_modules', '.next']);
   const [ignorePaths, setIgnorePaths] = useState<string[]>(['.git', '.vscode']);
   const [skipNested, setSkipNested] = useState<boolean>(true);
+  const [useGlobPatterns, setUseGlobPatterns] = useState<boolean>(false);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
@@ -160,6 +161,7 @@ function App() {
         patterns,
         skip_nested: skipNested,
         ignore_paths: ignorePaths.length > 0 ? ignorePaths : undefined,
+        use_glob_patterns: useGlobPatterns,
       };
 
       // Start scanning - results will come via events
@@ -283,6 +285,8 @@ function App() {
         <ScanControls
           skipNested={skipNested}
           onSkipNestedChange={setSkipNested}
+          useGlobPatterns={useGlobPatterns}
+          onUseGlobPatternsChange={setUseGlobPatterns}
           onScan={handleScan}
           onCancelScan={handleCancelScan}
           isScanning={isScanning}
