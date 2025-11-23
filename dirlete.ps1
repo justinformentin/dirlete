@@ -246,7 +246,6 @@ $btnDeselectAll.Add_Click({
     }
 })
 
-# ---------- Worker timer tick ----------
 $workerTimer.Add_Tick({
     if ($global:workerProcess -and $global:workerProcess.HasExited) {
         $workerTimer.Stop()
@@ -261,14 +260,38 @@ $workerTimer.Add_Tick({
                 $json = Get-Content -LiteralPath $global:workerOutputFile -Raw
                 if ($json) {
                     $result = $json | ConvertFrom-Json
-                    if ($result.Succeeded) { $succeeded = @($result.Succeeded) }
-                    if ($result.Failed)    { $failed    = @($result.Failed)    }
+                    if ($result.Succeeded) {
+                        if ($result.Succeeded -is [System.Collections.IEnumerable] -and
+                            -not ($result.Succeeded -is [string])) {
+                            foreach ($s in $result.Succeeded) { $succeeded += $s }
+                        } else {
+                            $succeeded += $result.Succeeded
+                        }
+                    }
+                    if ($result.Failed) {
+                        if ($result.Failed -is [System.Collections.IEnumerable] -and
+                            -not ($result.Failed -is [string])) {
+                            foreach ($f in $result.Failed) { $failed += $f }
+                        } else {
+                            $failed += $result.Failed
+                        }
+                    }
                 }
             } else {
-                $failed += "WORKER ERROR: Result file not found."
+                $failed += [pscustomobject]@{
+                    Path  = "UNKNOWN"
+                    Error = "Result file not found."
+                    Attempts = @()
+                    Notes    = @()
+                }
             }
         } catch {
-            $failed += "RESULT PARSE ERROR: $($_.Exception.Message)"
+            $failed += [pscustomobject]@{
+                Path  = "UNKNOWN"
+                Error = "RESULT PARSE ERROR: $($_.Exception.Message)"
+                Attempts = @()
+                Notes    = @()
+            }
         }
 
         # Remove succeeded
@@ -280,24 +303,40 @@ $workerTimer.Add_Tick({
             }
         }
 
-        # Mark failed
-        foreach ($path in $failed) {
-            $p = [string]$path
+        # Mark failed with reasons
+        $failedSummaryLines = @()
+
+        foreach ($failure in $failed) {
+            $p = [string]$failure.Path
+            $err = $failure.Error
+            if (-not $err -and $failure.Attempts -and $failure.Attempts.Count -gt 0) {
+                $err = $failure.Attempts[0]
+            }
+            if (-not $err) {
+                $err = "Unknown error"
+            }
+
+            $display = "[FAILED] $p — $err"
+
+            # Try to update existing line if present
             $idx = $listBox.Items.IndexOf($p)
             if ($idx -ge 0) {
-                $listBox.Items[$idx] = "[FAILED] $p"
+                $listBox.Items[$idx] = $display
                 $listBox.SetItemChecked($idx, $false)
             } else {
-                [void]$listBox.Items.Add("[FAILED] $p", $false)
+                [void]$listBox.Items.Add($display, $false)
             }
+
+            $failedSummaryLines += "$p : $err"
         }
 
         Set-UIBusy $false ("Delete complete. Deleted {0}, errors {1}." -f $succeeded.Count, $failed.Count)
 
-        if ($failed.Count -gt 0) {
-            $failedList = ($failed -join "`r`n")
+        if ($failedSummaryLines.Count -gt 0) {
+            $msg = "Finished deleting with $($failedSummaryLines.Count) error(s).`r`n`r`n" +
+                   ($failedSummaryLines -join "`r`n")
             [System.Windows.Forms.MessageBox]::Show(
-                "Finished deleting with $($failed.Count) error(s). The following folders failed to delete and are marked as [FAILED] in the list:`r`n`r`n$failedList",
+                $msg,
                 "Completed with errors",
                 'OK',
                 'Information'
@@ -309,6 +348,7 @@ $workerTimer.Add_Tick({
         $global:workerOutputFile = $null
     }
 })
+
 
 # ---------- Delete handler (starts worker EXE) ----------
 $btnDelete.Add_Click({
