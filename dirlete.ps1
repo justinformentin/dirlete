@@ -100,15 +100,11 @@ $listBox.HorizontalScrollbar = $true
 $listBox.CheckOnClick = $true
 $form.Controls.Add($listBox)
 
-# ---------- Browse handler ----------
-$btnBrowse.Add_Click({
-    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description = "Select the root folder to scan"
-    $dialog.ShowNewFolderButton = $false
-    if ($dialog.ShowDialog() -eq "OK") {
-        $txtRoot.Text = $dialog.SelectedPath
-    }
-})
+# ---------- Timer + worker globals ----------
+$workerTimer = New-Object System.Windows.Forms.Timer
+$workerTimer.Interval = 500  # ms
+$global:workerProcess    = $null
+$global:workerOutputFile = $null
 
 # ---------- Helper: disable/enable UI while running ----------
 function Set-UIBusy([bool]$busy, [string]$statusText) {
@@ -120,13 +116,15 @@ function Set-UIBusy([bool]$busy, [string]$statusText) {
         $progressBar.Value = 0
     }
 
+    $hasItems = ($listBox.Items.Count -gt 0)
+
     $btnScan.Enabled        = -not $busy
-    $btnDelete.Enabled      = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
+    $btnDelete.Enabled      = ( (-not $busy) -and $hasItems )
     $btnBrowse.Enabled      = -not $busy
     $txtRoot.Enabled        = -not $busy
     $txtNames.Enabled       = -not $busy
-    $btnSelectAll.Enabled   = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
-    $btnDeselectAll.Enabled = ( (-not $busy) -and ($listBox.Items.Count -gt 0) )
+    $btnSelectAll.Enabled   = ( (-not $busy) -and $hasItems )
+    $btnDeselectAll.Enabled = ( (-not $busy) -and $hasItems )
 
     if ($statusText) {
         $lblStatus.Text = "Status: $statusText"
@@ -164,9 +162,31 @@ function Get-MatchingFoldersTopLevel {
     return $matches
 }
 
+# ---------- Browse handler ----------
+$btnBrowse.Add_Click({
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = "Select the root folder to scan"
+    $dialog.ShowNewFolderButton = $false
+    if ($dialog.ShowDialog() -eq "OK") {
+        $txtRoot.Text = $dialog.SelectedPath
+    }
+})
+
 # ---------- Scan handler ----------
 $btnScan.Add_Click({
-    $root = $txtRoot.Text.Trim()
+    $root = $txtRoot.Text
+    if ([string]::IsNullOrWhiteSpace($root)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please select a root folder.",
+            "Invalid folder",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
+
+    $root = $root.Trim()
+
     if (-not (Test-Path $root)) {
         [System.Windows.Forms.MessageBox]::Show(
             "Please select a valid root folder.",
@@ -226,85 +246,92 @@ $btnDeselectAll.Add_Click({
     }
 })
 
-# ---------- Background worker for delete ----------
-$script:pathsToDelete = @()
+# ---------- Worker timer tick ----------
+$workerTimer.Add_Tick({
+    if ($global:workerProcess -and $global:workerProcess.HasExited) {
+        $workerTimer.Stop()
 
-$deleteWorker = New-Object System.ComponentModel.BackgroundWorker
-$deleteWorker.WorkerReportsProgress = $true
-
-# DoWork: runs on background thread
-$deleteWorker.add_DoWork({
-    param($sender, $e)
-
-    $deleted = 0
-    $errors  = 0
-    $total   = $script:pathsToDelete.Count
-
-    for ($i = 0; $i -lt $total; $i++) {
-        $path = $script:pathsToDelete[$i]
+        $succeeded = @()
+        $failed    = @()
 
         try {
-            if (Test-Path $path) {
-                Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop
-                $deleted++
+            if (-not [string]::IsNullOrWhiteSpace($global:workerOutputFile) -and
+                (Test-Path -LiteralPath $global:workerOutputFile)) {
+
+                $json = Get-Content -LiteralPath $global:workerOutputFile -Raw
+                if ($json) {
+                    $result = $json | ConvertFrom-Json
+                    if ($result.Succeeded) { $succeeded = @($result.Succeeded) }
+                    if ($result.Failed)    { $failed    = @($result.Failed)    }
+                }
+            } else {
+                $failed += "WORKER ERROR: Result file not found."
             }
         } catch {
-            $errors++
+            $failed += "RESULT PARSE ERROR: $($_.Exception.Message)"
         }
 
-        if ($total -gt 0) {
-            $percent = [int](($i + 1) * 100 / $total)
-            $sender.ReportProgress($percent)
+        # Remove succeeded
+        foreach ($path in $succeeded) {
+            $p = [string]$path
+            $idx = $listBox.Items.IndexOf($p)
+            if ($idx -ge 0) {
+                $listBox.Items.RemoveAt($idx)
+            }
         }
-    }
 
-    $e.Result = [pscustomobject]@{
-        Deleted = $deleted
-        Errors  = $errors
+        # Mark failed
+        foreach ($path in $failed) {
+            $p = [string]$path
+            $idx = $listBox.Items.IndexOf($p)
+            if ($idx -ge 0) {
+                $listBox.Items[$idx] = "[FAILED] $p"
+                $listBox.SetItemChecked($idx, $false)
+            } else {
+                [void]$listBox.Items.Add("[FAILED] $p", $false)
+            }
+        }
+
+        Set-UIBusy $false ("Delete complete. Deleted {0}, errors {1}." -f $succeeded.Count, $failed.Count)
+
+        if ($failed.Count -gt 0) {
+            $failedList = ($failed -join "`r`n")
+            [System.Windows.Forms.MessageBox]::Show(
+                "Finished deleting with $($failed.Count) error(s). The following folders failed to delete and are marked as [FAILED] in the list:`r`n`r`n$failedList",
+                "Completed with errors",
+                'OK',
+                'Information'
+            ) | Out-Null
+        }
+
+        # Cleanup
+        $global:workerProcess    = $null
+        $global:workerOutputFile = $null
     }
 })
 
-# ProgressChanged: runs on UI thread
-$deleteWorker.add_ProgressChanged({
-    param($sender, $e)
-
-    if ($e.ProgressPercentage -ge $progressBar.Minimum -and $e.ProgressPercentage -le $progressBar.Maximum) {
-        $progressBar.Value = $e.ProgressPercentage
-    }
-    $lblStatus.Text = "Status: Deleting... $($e.ProgressPercentage)%"
-})
-
-# RunWorkerCompleted: runs on UI thread
-$deleteWorker.add_RunWorkerCompleted({
-    param($sender, $e)
-
-    $result = $e.Result
-
-    # Remove deleted items from the listBox
-    for ($i = $listBox.Items.Count - 1; $i -ge 0; $i--) {
-        if ($script:pathsToDelete -contains $listBox.Items[$i]) {
-            $listBox.Items.RemoveAt($i)
-        }
-    }
-
-    $script:pathsToDelete = @()
-
-    Set-UIBusy $false ("Delete complete. Deleted {0}, errors {1}." -f $result.Deleted, $result.Errors)
-
-    if ($result.Errors -gt 0) {
+# ---------- Delete handler (starts worker EXE) ----------
+$btnDelete.Add_Click({
+    # Prevent concurrent deletions
+    if ($global:workerProcess -and -not $global:workerProcess.HasExited) {
         [System.Windows.Forms.MessageBox]::Show(
-            "Finished deleting with $($result.Errors) error(s). Some folders may have been locked or protected.",
-            "Completed with errors",
+            "A delete operation is already in progress. Please wait for it to finish.",
+            "Busy",
             'OK',
             'Information'
         ) | Out-Null
+        return
     }
-})
 
-# ---------- Delete handler ----------
-$btnDelete.Add_Click({
-    $checked = @($listBox.CheckedItems)
-    if ($checked.Count -eq 0) {
+    # Build list of checked paths
+    $paths = @()
+    for ($i = 0; $i -lt $listBox.Items.Count; $i++) {
+        if ($listBox.GetItemChecked($i)) {
+            $paths += [string]$listBox.Items[$i]
+        }
+    }
+
+    if ($paths.Count -eq 0) {
         [System.Windows.Forms.MessageBox]::Show(
             "No folders are selected. Please check at least one folder to delete.",
             "Nothing selected",
@@ -323,15 +350,97 @@ $btnDelete.Add_Click({
 
     if ($confirm -ne 'Yes') { return }
 
-    $script:pathsToDelete = $checked
+    # Determine app directory from current process exe
+    $exePath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+    if ([string]::IsNullOrWhiteSpace($exePath)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Unable to determine application path.",
+            "Error",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
 
+    $scriptDir = [System.IO.Path]::GetDirectoryName($exePath)
+
+    if ([string]::IsNullOrWhiteSpace($scriptDir) -or -not (Test-Path -LiteralPath $scriptDir)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Unable to determine application directory.",
+            "Error",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
+
+    # Worker EXE path
+    $workerExe = Join-Path $scriptDir "dirlete-worker.exe"
+
+    if (-not (Test-Path -LiteralPath $workerExe)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Worker EXE not found:`r`n$workerExe",
+            "Error",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
+
+    # Temp input/output files
+    $tempDir    = [System.IO.Path]::GetTempPath()
+    $inputFile  = Join-Path $tempDir ("dirlete_input_"  + [guid]::NewGuid().ToString() + ".txt")
+    $outputFile = Join-Path $tempDir ("dirlete_output_" + [guid]::NewGuid().ToString() + ".json")
+
+    if ([string]::IsNullOrWhiteSpace($inputFile) -or [string]::IsNullOrWhiteSpace($outputFile)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Failed to create temporary file paths.",
+            "Error",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
+
+    # Write paths to input file
+    try {
+        $paths | Set-Content -LiteralPath $inputFile -Encoding UTF8
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Failed to write input file:`r`n$($_.Exception.Message)",
+            "Error",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
+
+    # Remember output file for timer
+    $global:workerOutputFile = $outputFile
+
+    # Start worker process (no window)
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $workerExe
+    $psi.Arguments = '"' + $inputFile + '" "' + $outputFile + '"'
+    $psi.CreateNoWindow = $true
+    $psi.UseShellExecute = $false
+
+    try {
+        $global:workerProcess = [System.Diagnostics.Process]::Start($psi)
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Failed to start worker:`r`n$($_.Exception.Message)",
+            "Error",
+            'OK',
+            'Error'
+        ) | Out-Null
+        return
+    }
+
+    # UI updates while worker runs
     Set-UIBusy $true "Deleting folders..."
-    $progressBar.Style = 'Blocks'
-    $progressBar.Minimum = 0
-    $progressBar.Maximum = 100
-    $progressBar.Value = 0
-
-    $deleteWorker.RunWorkerAsync()
+    $progressBar.Style = 'Marquee'
+    $workerTimer.Start()
 })
 
 # ---------- Close handler ----------
