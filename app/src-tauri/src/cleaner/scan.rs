@@ -1,5 +1,5 @@
 use crate::cleaner::models::*;
-use anyhow::Result;
+// use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -30,55 +30,55 @@ fn should_ignore(name: &str, ignore_paths: &HashSet<String>, ignore_matchers: &[
     }
 }
 
-pub fn scan_dirs(req: &ScanRequest) -> Result<ScanResponse> {
-    let mut matches = Vec::new();
-    let patterns: HashSet<String> = req
-        .patterns
-        .iter()
-        .map(|p| p.trim().to_string())
-        .collect();
+// pub fn scan_dirs(req: &ScanRequest) -> Result<ScanResponse> {
+//     let mut matches = Vec::new();
+//     let patterns: HashSet<String> = req
+//         .patterns
+//         .iter()
+//         .map(|p| p.trim().to_string())
+//         .collect();
 
-    if patterns.is_empty() {
-        return Ok(ScanResponse { matches });
-    }
+//     if patterns.is_empty() {
+//         return Ok(ScanResponse { matches });
+//     }
 
-    if req.skip_nested {
-        // Use a manual recursive approach with depth tracking
-        scan_dirs_recursive(&req.root, &patterns, &mut matches)?;
-    } else {
-        // Simple walkdir without nested filtering
-        let walker = WalkDir::new(&req.root).follow_links(false);
+//     if req.skip_nested {
+//         // Use a manual recursive approach with depth tracking
+//         scan_dirs_recursive(&req.root, &patterns, &mut matches)?;
+//     } else {
+//         // Simple walkdir without nested filtering
+//         let walker = WalkDir::new(&req.root).follow_links(false);
 
-        for entry in walker {
-            let entry = match entry {
-                Ok(e) => e,
-                Err(_) => continue,
-            };
+//         for entry in walker {
+//             let entry = match entry {
+//                 Ok(e) => e,
+//                 Err(_) => continue,
+//             };
 
-            if !entry.file_type().is_dir() {
-                continue;
-            }
+//             if !entry.file_type().is_dir() {
+//                 continue;
+//             }
 
-            let name = match entry.file_name().to_str() {
-                Some(s) => s,
-                None => continue,
-            };
+//             let name = match entry.file_name().to_str() {
+//                 Some(s) => s,
+//                 None => continue,
+//             };
 
-            if patterns.contains(name) {
-                let path = entry.path();
-                let path_str = path.to_string_lossy().to_string();
-                let size_bytes = calculate_dir_size(path);
+//             if patterns.contains(name) {
+//                 let path = entry.path();
+//                 let path_str = path.to_string_lossy().to_string();
+//                 let size_bytes = calculate_dir_size(path);
 
-                matches.push(ScanFolderMatch {
-                    path: path_str,
-                    size_bytes,
-                });
-            }
-        }
-    }
+//                 matches.push(ScanFolderMatch {
+//                     path: path_str,
+//                     size_bytes,
+//                 });
+//             }
+//         }
+//     }
 
-    Ok(ScanResponse { matches })
-}
+//     Ok(ScanResponse { matches })
+// }
 
 pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
     let patterns: HashSet<String> = req
@@ -183,58 +183,58 @@ pub fn scan_dirs_with_progress(req: &ScanRequest, app_handle: AppHandle) {
     let _ = app_handle.emit("scan-complete", ScanCompleteEvent { total: count });
 }
 
-fn scan_dirs_recursive(
-    current_path: &str,
-    patterns: &HashSet<String>,
-    matches: &mut Vec<ScanFolderMatch>,
-) -> Result<()> {
-    let entries = match std::fs::read_dir(current_path) {
-        Ok(e) => e,
-        Err(_) => return Ok(()), // Skip directories we can't read
-    };
+// fn scan_dirs_recursive(
+//     current_path: &str,
+//     patterns: &HashSet<String>,
+//     matches: &mut Vec<ScanFolderMatch>,
+// ) -> Result<()> {
+//     let entries = match std::fs::read_dir(current_path) {
+//         Ok(e) => e,
+//         Err(_) => return Ok(()), // Skip directories we can't read
+//     };
 
-    for entry in entries {
-        let entry = match entry {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
+//     for entry in entries {
+//         let entry = match entry {
+//             Ok(e) => e,
+//             Err(_) => continue,
+//         };
 
-        let metadata = match entry.metadata() {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
+//         let metadata = match entry.metadata() {
+//             Ok(m) => m,
+//             Err(_) => continue,
+//         };
 
-        if !metadata.is_dir() {
-            continue;
-        }
+//         if !metadata.is_dir() {
+//             continue;
+//         }
 
-        let name = match entry.file_name().to_str() {
-            Some(s) => s.to_string(),
-            None => continue,
-        };
+//         let name = match entry.file_name().to_str() {
+//             Some(s) => s.to_string(),
+//             None => continue,
+//         };
 
-        // Check if this directory matches our patterns
-        if patterns.contains(&name) {
-            let path = entry.path();
-            let path_str = path.to_string_lossy().to_string();
-            let size_bytes = calculate_dir_size(&path);
+//         // Check if this directory matches our patterns
+//         if patterns.contains(&name) {
+//             let path = entry.path();
+//             let path_str = path.to_string_lossy().to_string();
+//             let size_bytes = calculate_dir_size(&path);
 
-            matches.push(ScanFolderMatch {
-                path: path_str,
-                size_bytes,
-            });
+//             matches.push(ScanFolderMatch {
+//                 path: path_str,
+//                 size_bytes,
+//             });
 
-            // Skip recursing into this directory (skip_nested behavior)
-            continue;
-        }
+//             // Skip recursing into this directory (skip_nested behavior)
+//             continue;
+//         }
 
-        // Recurse into non-matching directories
-        let path_str = entry.path().to_string_lossy().to_string();
-        let _ = scan_dirs_recursive(&path_str, patterns, matches);
-    }
+//         // Recurse into non-matching directories
+//         let path_str = entry.path().to_string_lossy().to_string();
+//         let _ = scan_dirs_recursive(&path_str, patterns, matches);
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn scan_dirs_recursive_with_progress(
     current_path: &str,

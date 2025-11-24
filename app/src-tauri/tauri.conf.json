@@ -29,10 +29,6 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": [
-      "../../dirlete.ico",
-      "../../dirlete.png"
-    ],
     "windows": {
       "wix": {
         "language": "en-US"
