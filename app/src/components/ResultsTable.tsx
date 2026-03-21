@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FolderRow } from '../types/ipc';
+import { formatBytes } from '../utils/formatBytes';
 
 enum Status {
   Pending = 'pending',
@@ -78,20 +79,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     );
   }
 
-  const formatSize = (bytes: number | null): string => {
-    if (bytes === null) return 'N/A';
-    if (bytes === 0) return '0 B';
-
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  };
-
   const getStatusClass = (status: string): string => {
     const baseClasses =
-      'inline-block px-2 py-1 rounded-sm text-[11px] font-semibold uppercase';
+      'inline-block px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide shadow-sm';
     const statusClasses = {
       pending: 'bg-gray-200 text-gray-700',
       selected: 'bg-blue-100 text-blue-800',
@@ -135,41 +125,49 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Found Folders</h2>
-        <div className="text-sm text-gray-600">
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-xl font-bold text-gray-800">Found Folders</h2>
+        <div className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">
           {selectedCount} of {folders.length} selected
         </div>
       </div>
 
-      <div className="max-h-[500px] overflow-y-auto border border-gray-300 rounded">
+      <div className="max-h-[500px] overflow-y-auto border border-gray-300 rounded-xl shadow-inner">
         <table className="w-full border-collapse">
-          <thead className="sticky top-0 bg-gray-50 z-10">
+          <thead className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 z-10 shadow-sm">
             <tr>
-              <th className="w-10 text-center p-3 text-left text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300">
+              <th className="w-12 text-center p-4 text-left text-sm font-bold text-gray-700 border-b-2 border-gray-300">
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={onToggleAll}
                   disabled={deletableCount === 0}
-                  className="w-4 h-4 cursor-pointer"
+                  className="w-5 h-5 text-primary rounded cursor-pointer focus:ring-2 focus:ring-primary/20"
                 />
               </th>
               <th
-                className="p-3 text-left text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300 cursor-pointer select-none transition-colors hover:bg-gray-100"
+                className="p-4 text-left text-sm font-bold text-gray-700 border-b-2 border-gray-300 cursor-pointer select-none transition-all duration-150 hover:bg-gray-200/50"
                 onClick={() => handleSort('path')}
               >
-                Path{' '}
-                {sortField === 'path' && (sortDirection === 'asc' ? '▲' : '▼')}
+                <span className="flex items-center gap-2">
+                  Path{' '}
+                  <span className="text-primary">
+                    {sortField === 'path' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </span>
+                </span>
               </th>
               <th
-                className="w-[120px] text-right p-3 text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300 cursor-pointer select-none transition-colors hover:bg-gray-100"
+                className="w-[130px] text-right p-4 text-sm font-bold text-gray-700 border-b-2 border-gray-300 cursor-pointer select-none transition-all duration-150 hover:bg-gray-200/50"
                 onClick={() => handleSort('size')}
               >
-                Size{' '}
-                {sortField === 'size' && (sortDirection === 'asc' ? '▲' : '▼')}
+                <span className="flex items-center justify-end gap-2">
+                  Size{' '}
+                  <span className="text-primary">
+                    {sortField === 'size' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </span>
+                </span>
               </th>
-              <th className="w-[120px] p-3 text-left text-[13px] font-semibold text-gray-700 border-b-2 border-gray-300">
+              <th className="w-[130px] p-4 text-left text-sm font-bold text-gray-700 border-b-2 border-gray-300">
                 Status
               </th>
             </tr>
@@ -181,25 +179,25 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
               const canSelect = folder.status === Status.Pending || isSelected;
 
               return (
-                <tr key={folder.path} className="hover:bg-gray-50">
-                  <td className="text-center p-2.5 text-[13px] border-b border-gray-200">
+                <tr key={folder.path} className="hover:bg-primary/30 transition-colors duration-150">
+                  <td className="text-center p-3.5 text-sm border-b border-gray-200">
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => onToggleSelection(folder.path)}
                       disabled={!canSelect}
-                      className="w-4 h-4 cursor-pointer"
+                      className="w-5 h-5 text-primary rounded cursor-pointer focus:ring-2 focus:ring-primary/20"
                     />
                   </td>
                   <td
-                    className="p-2.5 text-[12px] font-mono border-b border-gray-200 max-w-[500px] overflow-hidden text-ellipsis whitespace-nowrap"
+                    className="p-3.5 text-sm font-mono border-b border-gray-200 max-w-[500px] overflow-hidden text-ellipsis whitespace-nowrap"
                     title={folder.path}
                   >
                     <span
                       className={
                         isDeleted
                           ? 'opacity-50'
-                          : 'text-blue-600 cursor-pointer underline transition-colors hover:text-blue-700'
+                          : 'text-primary cursor-pointer underline decoration-primary underline-offset-2 transition-colors hover:text-primary hover:decoration-primary'
                       }
                       onClick={() =>
                         isDeleted ? null : handleOpenFolder(folder.path)
@@ -208,7 +206,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                       {getDisplayPath(folder.path)}
                     </span>
                     {folder.error && (
-                      <div className="text-red-600 text-[12px] italic">
+                      <div className="text-red-600 text-sm italic mt-1">
                         {folder.error}
                       </div>
                     )}
@@ -216,12 +214,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                   <td
                     className={
                       (isDeleted ? 'opacity-50' : '') +
-                      ' text-right p-2.5 text-[13px] border-b border-gray-200'
+                      ' text-right p-3.5 text-sm font-medium border-b border-gray-200'
                     }
                   >
-                    {formatSize(folder.sizeBytes)}
+                    {formatBytes(folder.sizeBytes)}
                   </td>
-                  <td className="p-2.5 text-[13px] border-b border-gray-200">
+                  <td className="p-3.5 text-sm border-b border-gray-200">
                     <span className={getStatusClass(folder.status)}>
                       {folder.status}
                     </span>

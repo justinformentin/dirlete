@@ -23,46 +23,46 @@ const ScanControls: React.FC<ScanControlsProps> = ({
 }) => {
   return (
     <div>
-      <div className="mb-4 space-y-2">
-        <div className="flex items-center gap-2">
+      <div className="mb-5 space-y-3">
+        <div className="flex items-center gap-3">
           <input
             id="skip-nested"
             type="checkbox"
             checked={skipNested}
             onChange={(e) => onSkipNestedChange(e.target.checked)}
             disabled={disabled}
-            className="w-[18px] h-[18px] cursor-pointer disabled:cursor-not-allowed"
+            className="w-5 h-5 text-sky-600 rounded cursor-pointer focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed"
           />
           <label htmlFor="skip-nested" className="cursor-pointer select-none text-sm font-medium text-gray-800">
             Skip nested matches (don't scan inside matched folders)
           </label>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <input
             id="use-glob-patterns"
             type="checkbox"
             checked={useGlobPatterns}
             onChange={(e) => onUseGlobPatternsChange(e.target.checked)}
             disabled={disabled}
-            className="w-[18px] h-[18px] cursor-pointer disabled:cursor-not-allowed"
+            className="w-5 h-5 text-sky-600 rounded cursor-pointer focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed"
           />
           <label htmlFor="use-glob-patterns" className="cursor-pointer select-none text-sm font-medium text-gray-800">
             Use wildcard patterns (* and ?)
           </label>
         </div>
-        <p className="ml-6 text-xs text-gray-500">
-          Examples: <code className="bg-gray-200 px-1 rounded">node_*</code> matches <code className="bg-gray-200 px-1 rounded">node_modules</code>, <code className="bg-gray-200 px-1 rounded">node_env</code> | <code className="bg-gray-200 px-1 rounded">*cache</code> matches <code className="bg-gray-200 px-1 rounded">.cache</code>, <code className="bg-gray-200 px-1 rounded">npm-cache</code>
+        <p className="ml-8 text-xs text-gray-500 leading-relaxed">
+          Examples: <code className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono">node_*</code> matches <code className="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-mono">node_modules</code>, <code className="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-mono">node_env</code> | <code className="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-mono">*cache</code> matches <code className="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-mono">.cache</code>, <code className="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-mono">npm-cache</code>
         </p>
       </div>
-      <div className="mb-0 flex gap-2">
+      <div className="mb-0 flex gap-3">
         <button
           onClick={onScan}
           disabled={disabled || isScanning}
-          className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium transition-colors hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-sky-600 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg hover:bg-sky-800 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
         >
           {isScanning ? (
             <span className="flex items-center gap-2">
-              <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin-custom"></span>
+              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin-custom"></span>
               Scanning...
             </span>
           ) : (
@@ -72,7 +72,7 @@ const ScanControls: React.FC<ScanControlsProps> = ({
         {isScanning && (
           <button
             onClick={onCancelScan}
-            className="px-4 py-2 bg-red-600 text-white rounded text-sm font-medium transition-colors hover:bg-red-700"
+            className="px-6 py-3 bg-red-600 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg hover:bg-red-700 transition-all duration-200"
           >
             Stop Scan
           </button>

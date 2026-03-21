@@ -27,11 +27,11 @@ const RootPicker: React.FC<RootPickerProps> = ({ root, onRootChange, disabled })
   };
 
   return (
-    <div className="mb-4">
-      <label htmlFor="root-path" className="block mb-1.5 text-sm font-medium text-gray-800">
+    <div className="mb-5">
+      <label htmlFor="root-path" className="block mb-2 text-sm font-semibold text-gray-800">
         Root Directory
       </label>
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <input
           id="root-path"
           type="text"
@@ -39,12 +39,12 @@ const RootPicker: React.FC<RootPickerProps> = ({ root, onRootChange, disabled })
           onChange={(e) => onRootChange(e.target.value)}
           placeholder="Select a root directory to scan..."
           disabled={disabled}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:border-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
         <button
           onClick={handleChooseFolder}
           disabled={disabled}
-          className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium transition-colors hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="px-5 py-3 bg-sky-600 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg hover:bg-sky-700 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
         >
           Browse...
         </button>

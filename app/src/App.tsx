@@ -17,6 +17,7 @@ import {
   DeleteProgressEvent,
   DeleteCompleteEvent,
 } from './types/ipc';
+import { formatBytes } from './utils/formatBytes';
 import './App.css';
 
 function App() {
@@ -262,15 +263,18 @@ function App() {
 
   const isDeleting = deleteJobId !== null;
   const selectedCount = folders.filter((f) => f.status === 'selected').length;
+  const selectedTotalSize = folders
+    .filter((f) => f.status === 'selected')
+    .reduce((total, f) => total + (f.sizeBytes || 0), 0);
 
   return (
-    <div className="max-w-7xl mx-auto p-5">
-      <div className="bg-white p-5 rounded-lg shadow-sm mb-5">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-2">Dirlete</h1>
+    <div className="max-w-7xl mx-auto p-6 lg:p-8">
+      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300 mb-6">
+        <h1 className="text-3xl font-bold bg-primary mb-2">Dirlete</h1>
         <p className="text-sm text-gray-600">Delete node_modules and other folders efficiently</p>
       </div>
 
-      <div className="bg-white p-5 rounded-lg shadow-sm mb-5">
+      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300 mb-6">
         <RootPicker root={root} onRootChange={setRoot} disabled={isDeleting} />
         <PatternInput
           patterns={patterns}
@@ -294,7 +298,7 @@ function App() {
         />
       </div>
 
-      <div className="bg-white p-5 rounded-lg shadow-sm">
+      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
         <ResultsTable
           folders={folders}
           rootPath={root}
@@ -303,9 +307,9 @@ function App() {
         />
 
         {folders.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-6 flex justify-between items-center">
             <button
-              className="px-4 py-2 bg-red-600 text-white rounded font-medium transition-colors hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-red-700 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
               onClick={handleDeleteSelected}
               disabled={selectedCount === 0 || isDeleting || isScanning}
             >
@@ -313,6 +317,11 @@ function App() {
                 ? 'Deleting...'
                 : `Delete ${selectedCount} Selected Folder(s)`}
             </button>
+            {selectedCount > 0 && (
+              <div className="text-lg font-semibold text-gray-700">
+                Total: {formatBytes(selectedTotalSize)}
+              </div>
+            )}
           </div>
         )}
 
