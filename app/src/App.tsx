@@ -1,57 +1,91 @@
-import { useState } from 'react';
+import { useState, useCallback, ReactNode } from 'react';
 import FilesPage from './pages/FilesPage';
 import VideoPage from './pages/VideoPage';
+import { SidebarContext } from './SidebarContext';
+import { ThemeProvider, useTheme } from './ThemeContext';
+import { Folder, Film, Sun, Moon } from 'lucide-react';
 import './App.css';
 
 type Page = 'files' | 'video';
 
-function PageRenderer({ page }: { page: Page }) {
-  switch (page) {
-    case 'files':
-      return <FilesPage />;
-    case 'video':
-      return <VideoPage />;
-    default:
-      return null;
-  }
+function AppShell() {
+  const [page, setPage] = useState<Page>('files');
+  const [sidebarContent, setSidebarContentState] = useState<ReactNode>(null);
+  const { theme, toggleTheme } = useTheme();
+
+  const setSidebarContent = useCallback((content: ReactNode) => {
+    setSidebarContentState(content);
+  }, []);
+
+  return (
+    <SidebarContext.Provider value={setSidebarContent}>
+      <div className="flex h-screen overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-56 bg-sidebar border-r border-border flex flex-col flex-shrink-0">
+          {/* App header */}
+          <div className="px-4 py-4 flex items-center gap-2">
+            <Film className="w-5 h-5 text-purple-400 shrink-0" />
+            <span className="text-foreground font-semibold text-base">Dirlete</span>
+          </div>
+
+          {/* Page nav */}
+          <nav className="px-2 pb-3 border-b border-border space-y-0.5">
+            <button
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                page === 'files'
+                  ? 'bg-purple-600 text-white'
+                  : 'text-muted hover:text-foreground hover:bg-surface'
+              }`}
+              onClick={() => setPage('files')}
+            >
+              <Folder className="w-4 h-4 shrink-0" />
+              Folder Cleaner
+            </button>
+            <button
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                page === 'video'
+                  ? 'bg-purple-600 text-white'
+                  : 'text-muted hover:text-foreground hover:bg-surface'
+              }`}
+              onClick={() => setPage('video')}
+            >
+              <Film className="w-4 h-4 shrink-0" />
+              Video Cull
+            </button>
+          </nav>
+
+          {/* Page-specific sidebar content */}
+          <div className="flex-1 overflow-y-auto">
+            {sidebarContent}
+          </div>
+
+          {/* Theme toggle */}
+          <div className="px-4 py-3 border-t border-border">
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted hover:text-foreground hover:bg-surface transition-colors"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark'
+                ? <><Sun className="w-4 h-4 shrink-0" /> Light mode</>
+                : <><Moon className="w-4 h-4 shrink-0" /> Dark mode</>}
+            </button>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto bg-background p-6">
+          {page === 'files' ? <FilesPage /> : <VideoPage />}
+        </main>
+      </div>
+    </SidebarContext.Provider>
+  );
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('files');
-
-  const tabClass = (p: Page) =>
-    [
-      'px-5 py-2 rounded-lg font-medium text-sm transition-colors',
-      page === p
-        ? 'bg-sky-600 text-white shadow'
-        : 'text-gray-600 hover:bg-gray-100',
-    ].join(' ');
-
   return (
-    <div className="max-w-7xl mx-auto p-6 lg:p-8">
-      {/* Header */}
-      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300 mb-6">
-        <h1 className="text-3xl font-bold bg-primary mb-2">Dirlete</h1>
-        <p className="text-sm text-gray-600 mb-4">
-          Delete node_modules and other folders efficiently
-        </p>
-        <div className="flex gap-2">
-          <button
-            className={tabClass('files')}
-            onClick={() => setPage('files')}
-          >
-            Folder Cleaner
-          </button>
-          <button
-            className={tabClass('video')}
-            onClick={() => setPage('video')}
-          >
-            Video Culler
-          </button>
-        </div>
-      </div>
-
-      <PageRenderer page={page} />
-    </div>
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
   );
 }

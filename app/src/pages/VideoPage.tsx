@@ -3,11 +3,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen, Event } from '@tauri-apps/api/event';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
-import RootPicker from '../components/RootPicker';
+import { open } from '@tauri-apps/plugin-dialog';
 import VideoCard from '../components/VideoCard';
 import { formatBytes } from '../utils/formatBytes';
 import { VideoAction, VideoItem, VideoScanProgressEvent, VideoScanCompleteEvent } from '../types/ipc';
 import { Rewind, FastForward, Play, Pause, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useSidebar } from '../SidebarContext';
 
 const STORAGE_KEY = 'video-culler-actions';
 const MULTIWATCH_PAGE_SIZE = 9;
@@ -30,6 +31,8 @@ function persistActions(actions: Record<string, VideoAction>) {
 }
 
 export default function VideoPage() {
+  const setSidebarContent = useSidebar();
+
   const [root, setRoot] = useState('');
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -250,12 +253,19 @@ export default function VideoPage() {
     }
   };
 
+  // ── Folder picker ─────────────────────────────────────────────────────────────
+  const openFolderPicker = useCallback(async () => {
+    try {
+      const selected = await open({ directory: true, multiple: false, title: 'Select Video Folder' });
+      if (selected) setRoot(selected);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   // ── Scan ──────────────────────────────────────────────────────────────────────
   const handleScan = async () => {
-    if (!root) {
-      alert('Please select a directory first.');
-      return;
-    }
+    if (!root) return;
     videoRefs.current.forEach((v) => v?.pause());
     multiWatchRefs.current.forEach((v) => v?.pause());
     setIsMultiWatchPlaying(false);
@@ -339,6 +349,7 @@ export default function VideoPage() {
     .filter((v) => v.action === 'delete')
     .reduce((s, v) => s + (v.sizeBytes ?? 0), 0);
   const keepCount = videos.filter((v) => v.action === 'keep').length;
+  const skipCount = videos.filter((v) => v.action === 'skip').length;
   const unmarkedCount = videos.filter((v) => v.action === null).length;
 
   // ── Multi-watch derived ───────────────────────────────────────────────────────
@@ -360,47 +371,85 @@ export default function VideoPage() {
     skip:   { ring: 'ring-4 ring-gray-400',  badge: 'bg-gray-500' },
   };
 
+  // ── Sidebar injection ────────────────────────────────────────────────────────
+  useEffect(() => {
+    setSidebarContent(
+      <div className="p-4 space-y-5 text-sm">
+        {/* Current Folder */}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-2">
+            Current Folder
+          </p>
+          <p className="text-xs text-gray-300 font-mono truncate mb-2.5 leading-relaxed" title={root}>
+            {root || 'None selected'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={openFolderPicker}
+              disabled={isScanning || isDeleting}
+              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-40 transition-colors"
+            >
+              Change
+            </button>
+            <button
+              onClick={handleScan}
+              disabled={isScanning || isDeleting || !root}
+              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-40 transition-colors"
+            >
+              {isScanning ? 'Scanning…' : 'Rescan'}
+            </button>
+          </div>
+        </div>
+
+        {/* Status */}
+        {videos.length > 0 && (
+          <>
+            <div className="border-t border-gray-800" />
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-3">
+                Status
+              </p>
+              <div className="text-center mb-3">
+                <p className="text-3xl font-bold text-white">{videos.length}</p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">All</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center bg-gray-800/50 rounded-lg py-2">
+                  <p className="text-base font-semibold text-white">{unmarkedCount}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Pending</p>
+                </div>
+                <div className="text-center bg-gray-800/50 rounded-lg py-2">
+                  <p className="text-base font-semibold text-green-400">{keepCount}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Keep</p>
+                </div>
+                <div className="text-center bg-gray-800/50 rounded-lg py-2">
+                  <p className="text-base font-semibold text-gray-400">{skipCount}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Skipped</p>
+                </div>
+                <div className="text-center bg-gray-800/50 rounded-lg py-2">
+                  <p className="text-base font-semibold text-red-400">{deleteCount}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Delete</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [root, isScanning, isDeleting, videos.length, keepCount, deleteCount, unmarkedCount, skipCount]);
+
   return (
     <div>
-      {/* Controls card */}
-      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300 mb-6">
-        <RootPicker root={root} onRootChange={setRoot} disabled={isScanning || isDeleting} />
-
-        <div className="mt-4 flex flex-wrap gap-3 items-center">
-          <button
-            className="px-5 py-2.5 bg-sky-600 text-white rounded-lg font-medium shadow hover:bg-sky-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-            onClick={handleScan}
-            disabled={isScanning || isDeleting || !root}
-          >
-            {isScanning ? (
-              <span className="flex items-center gap-2">
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin-custom" />
-                Scanning…
-              </span>
-            ) : (
-              'Scan for Videos'
-            )}
-          </button>
-
-          {videos.length > 0 && (
-            <div className="text-sm text-gray-500 ml-auto flex gap-4">
-              <span className="text-green-700 font-medium">{keepCount} keep</span>
-              <span className="text-gray-500">{unmarkedCount} unmarked</span>
-              <span className="text-red-600 font-medium">{deleteCount} delete</span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Tabs */}
       {videos.length > 0 && (
-        <div className="mb-4 flex gap-1 border-b border-gray-200">
+        <div className="mb-4 flex gap-1 border-b border-gray-700">
           <button
             className={[
               'px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors',
               activeTab === 'browse'
-                ? 'bg-white text-sky-600 border border-b-white border-gray-200 -mb-px'
-                : 'text-gray-500 hover:text-gray-700',
+                ? 'bg-gray-800 text-white border border-b-gray-800 border-gray-700 -mb-px'
+                : 'text-gray-500 hover:text-gray-300',
             ].join(' ')}
             onClick={() => setActiveTab('browse')}
           >
@@ -410,8 +459,8 @@ export default function VideoPage() {
             className={[
               'px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors',
               activeTab === 'multiwatch'
-                ? 'bg-white text-sky-600 border border-b-white border-gray-200 -mb-px'
-                : 'text-gray-500 hover:text-gray-700',
+                ? 'bg-gray-800 text-white border border-b-gray-800 border-gray-700 -mb-px'
+                : 'text-gray-500 hover:text-gray-300',
             ].join(' ')}
             onClick={() => setActiveTab('multiwatch')}
           >
@@ -422,14 +471,14 @@ export default function VideoPage() {
 
       {/* Browse tab */}
       {activeTab === 'browse' && videos.length > 0 && (
-        <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
-          <p className="mb-4 text-xs text-gray-400">
-            Keyboard shortcuts when a video is focused — <kbd className="bg-gray-100 px-1 rounded">K</kbd> Keep &nbsp;
-            <kbd className="bg-gray-100 px-1 rounded">D</kbd> Delete &nbsp;
-            <kbd className="bg-gray-100 px-1 rounded">S</kbd> Skip &nbsp;
-            <kbd className="bg-gray-100 px-1 rounded">Space</kbd> Play/Pause &nbsp;
-            <kbd className="bg-gray-100 px-1 rounded">←→</kbd> Navigate &nbsp;
-            <kbd className="bg-gray-100 px-1 rounded">[</kbd><kbd className="bg-gray-100 px-1 rounded">]</kbd> Seek ±5s
+        <div className="bg-gray-900 p-4 rounded-xl">
+          <p className="mb-4 text-xs text-gray-500">
+            Keyboard shortcuts when a video is focused — <kbd className="bg-gray-700 text-gray-300 px-1 rounded">K</kbd> Keep &nbsp;
+            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">D</kbd> Delete &nbsp;
+            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">S</kbd> Skip &nbsp;
+            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">Space</kbd> Play/Pause &nbsp;
+            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">←→</kbd> Navigate &nbsp;
+            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">[</kbd><kbd className="bg-gray-700 text-gray-300 px-1 rounded">]</kbd> Seek ±5s
           </p>
 
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -449,13 +498,12 @@ export default function VideoPage() {
               />
             ))}
           </div>
-
         </div>
       )}
 
       {/* Multi-Watch tab */}
       {activeTab === 'multiwatch' && videos.length > 0 && (
-        <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
+        <div className="bg-gray-900 p-4 rounded-xl">
           {/* Multi-watch controls */}
           <div className="flex flex-wrap items-center gap-3 mb-5">
             <button
@@ -463,7 +511,7 @@ export default function VideoPage() {
                 'px-5 py-2.5 rounded-lg font-medium shadow transition-colors',
                 isMultiWatchPlaying
                   ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                  : 'bg-gray-700 hover:bg-gray-800 text-white',
+                  : 'bg-gray-700 hover:bg-gray-600 text-white',
               ].join(' ')}
               onClick={toggleMultiWatchPlay}
               disabled={isDeleting}
@@ -473,7 +521,7 @@ export default function VideoPage() {
                 : <div className="flex items-center gap-2"><Play className="w-4 h-4" /><span>Play All</span></div>}
             </button>
             <button
-              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-gray-100 hover:bg-gray-200 text-gray-700"
+              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-gray-700 hover:bg-gray-600 text-gray-200"
               onClick={() => seekMultiWatch(-5)}
               disabled={isDeleting}
               title="Seek all back 5 seconds"
@@ -481,7 +529,7 @@ export default function VideoPage() {
               <div className="flex items-center gap-1"><Rewind className="w-4 h-4 self-center" /><span>5s</span></div>
             </button>
             <button
-              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-gray-100 hover:bg-gray-200 text-gray-700"
+              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-gray-700 hover:bg-gray-600 text-gray-200"
               onClick={() => seekMultiWatch(5)}
               disabled={isDeleting}
               title="Seek all forward 5 seconds"
@@ -492,18 +540,18 @@ export default function VideoPage() {
             {/* Pagination */}
             <div className="ml-auto flex items-center gap-2">
               <button
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 onClick={() => changeMultiWatchPage(multiWatchPage - 1)}
                 disabled={multiWatchPage === 0}
                 title="Previous page"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm text-gray-600 min-w-[6rem] text-center">
+              <span className="text-sm text-gray-400 min-w-[6rem] text-center">
                 Page {multiWatchPage + 1} of {totalMultiWatchPages}
               </span>
               <button
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 onClick={() => changeMultiWatchPage(multiWatchPage + 1)}
                 disabled={multiWatchPage >= totalMultiWatchPages - 1}
                 title="Next page"
@@ -555,9 +603,9 @@ export default function VideoPage() {
 
       {/* Empty state */}
       {!isScanning && videos.length === 0 && (
-        <div className="bg-white p-12 rounded-2xl shadow-soft text-center text-gray-400">
+        <div className="bg-gray-900 p-12 rounded-xl text-center text-gray-500">
           <p className="text-lg font-medium mb-1">No videos found</p>
-          <p className="text-sm">Select a folder and click "Scan for Videos" to get started.</p>
+          <p className="text-sm">Select a folder and click "Rescan" to get started.</p>
         </div>
       )}
 
