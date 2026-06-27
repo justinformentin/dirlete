@@ -12,7 +12,7 @@ export default function PatternInput({ patterns, onPatternsChange, disabled }: P
       id="patterns"
       values={patterns}
       onValuesChange={onPatternsChange}
-      placeholder="Type a pattern and press Enter…"
+      placeholder="Enter text or pattern"
       helpText="Press Enter to add. Backspace removes the last one."
       disabled={disabled}
       tagClassName="bg-sky-500/20 text-sky-600 dark:text-sky-300"

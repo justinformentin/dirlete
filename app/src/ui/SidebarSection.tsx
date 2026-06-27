@@ -9,7 +9,7 @@ interface SidebarSectionProps {
 export default function SidebarSection({ title, children, withDivider = true }: SidebarSectionProps) {
   return (
     <>
-      {withDivider && <div className="border-t border-border" />}
+      {withDivider && <div className="border-t border-card" />}
       <div>
         {title && (
           <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">

@@ -1,5 +1,6 @@
 import { KeyboardEvent, useState } from 'react';
 import TextInput from './TextInput';
+import { X } from 'lucide-react';
 
 interface TagInputProps {
   id: string;
@@ -41,34 +42,39 @@ export default function TagInput({
   };
 
   return (
-    <div className="mb-5">
-      <div className="flex flex-wrap gap-2 p-3 border border-border rounded-lg focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 bg-surface min-h-[50px] transition-all duration-200">
+    <div className="mb-5 space-y-2">
+      <div className="flex flex-wrap gap-2 p-3 rounded-lg focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 bg-surface min-h-[50px] transition-all duration-200">
         {values.map((value) => (
-          <span key={value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-medium ${tagClassName}`}>
+          <span
+            key={value}
+            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-medium ${tagClassName}`}
+          >
             {value}
             <button
               type="button"
-              onClick={() => onValuesChange(values.filter((item) => item !== value))}
+              onClick={() =>
+                onValuesChange(values.filter((item) => item !== value))
+              }
               disabled={disabled}
               className={`ml-0.5 font-bold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${removeClassName}`}
               aria-label={`Remove ${value}`}
             >
-              ×
+              <X className="w-3 h-3" />
             </button>
           </span>
         ))}
-        <TextInput
-          id={id}
-          type="text"
-          value={inputValue}
-          onChange={(event) => setInputValue(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={values.length === 0 ? placeholder : ''}
-          disabled={disabled}
-          className="flex-1 min-w-[120px] font-mono bg-transparent"
-        />
       </div>
-      <p className="mt-2 text-xs text-subtle">{helpText}</p>
+      <TextInput
+        id={id}
+        type="text"
+        value={inputValue}
+        onChange={(event) => setInputValue(event.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="flex-1 w-full font-mono border border-border rounded-lg text-xs"
+      />
+      <p className="text-xs text-subtle">{helpText}</p>
     </div>
   );
 }
