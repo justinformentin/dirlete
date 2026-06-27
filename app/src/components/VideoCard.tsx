@@ -154,21 +154,6 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
             <button
               className={[
                 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors',
-                action === 'skip'
-                  ? 'bg-gray-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-              ].join(' ')}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(action === 'skip' ? null : 'skip');
-              }}
-              title="Skip (S)"
-            >
-              Skip
-            </button>
-            <button
-              className={[
-                'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors',
                 action === 'delete'
                   ? 'bg-red-500 text-white'
                   : 'bg-red-100 text-red-600 hover:bg-red-200',

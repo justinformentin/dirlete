@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen, Event } from '@tauri-apps/api/event';
+import { confirm, message } from '@tauri-apps/plugin-dialog';
 import RootPicker from '../components/RootPicker';
 import VideoCard from '../components/VideoCard';
 import { formatBytes } from '../utils/formatBytes';
@@ -303,17 +304,15 @@ export default function VideoPage() {
   // ── Delete marked ────────────────────────────────────────────────────────────
   const handleDeleteMarked = async () => {
     const toDelete = videos.filter((v) => v.action === 'delete').map((v) => v.path);
-    if (toDelete.length === 0) {
-      alert('No videos marked for deletion.');
-      return;
-    }
+    if (toDelete.length === 0) return;
 
     const totalSize = videos
       .filter((v) => v.action === 'delete')
       .reduce((s, v) => s + (v.sizeBytes ?? 0), 0);
 
-    const confirmed = confirm(
-      `Permanently delete ${toDelete.length} video(s) (${formatBytes(totalSize)})?\n\nThis cannot be undone.`
+    const confirmed = await confirm(
+      `Permanently delete ${toDelete.length} video(s) (${formatBytes(totalSize)})?\n\nThis cannot be undone.`,
+      { title: 'Confirm Deletion', kind: 'warning' }
     );
     if (!confirmed) return;
 
@@ -328,7 +327,7 @@ export default function VideoPage() {
       toDelete.forEach((p) => delete savedActions.current[p]);
       persistActions(savedActions.current);
     } catch (err) {
-      alert(`Delete failed:\n${err}`);
+      await message(`Delete failed:\n${err}`, { title: 'Error', kind: 'error' });
     } finally {
       setIsDeleting(false);
     }
