@@ -34,12 +34,12 @@ export default function FilesPage() {
   }, [cleaner.root, cleaner.isScanning, cleaner.isDeleting, cleaner.patterns, cleaner.ignorePaths, cleaner.skipNested, cleaner.useGlobPatterns]);
 
   return (
-    <div className="bg-card p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
+    <div className="h-full bg-card p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
       <ResultsTable folders={cleaner.folders} rootPath={cleaner.root} onToggleSelection={cleaner.toggleSelection} onToggleAll={cleaner.toggleAll} />
 
       {cleaner.folders.length > 0 && (
         <div className="mt-6 flex justify-between items-center">
-          <Button variant="danger" className="px-6 py-3 rounded-lg shadow-md hover:shadow-lg disabled:shadow-none" onClick={cleaner.deleteSelected} disabled={cleaner.selectedCount === 0 || cleaner.isDeleting || cleaner.isScanning}>
+          <Button variant="danger" size="sm" className="px-4 rounded-lg shadow-md hover:shadow-lg disabled:shadow-none" onClick={cleaner.deleteSelected} disabled={cleaner.selectedCount === 0 || cleaner.isDeleting || cleaner.isScanning}>
             {cleaner.isDeleting ? 'Deleting...' : `Delete ${cleaner.selectedCount} Selected Folder(s)`}
           </Button>
           {cleaner.selectedCount > 0 && <div className="text-lg font-semibold text-muted">Total: {formatBytes(cleaner.selectedTotalSize)}</div>}
