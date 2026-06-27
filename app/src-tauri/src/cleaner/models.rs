@@ -79,6 +79,8 @@ pub struct VideoScanProgressEvent {
     pub path: String,
     #[serde(rename = "sizeBytes")]
     pub size_bytes: Option<u64>,
+    #[serde(rename = "modifiedMs")]
+    pub modified_ms: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Clone)]

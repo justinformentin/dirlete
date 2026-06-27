@@ -81,6 +81,7 @@ export interface VideoItem {
   sizeBytes: number | null;
   action: VideoAction | null;
   durationSeconds?: number;
+  modifiedMs?: number | null;
 }
 
 export interface VideoDisplayItem extends VideoItem {
@@ -88,12 +89,13 @@ export interface VideoDisplayItem extends VideoItem {
 }
 
 export type StatusFilter = 'all' | 'pending' | 'keep' | 'skip' | 'delete';
-export type VideoSortBy = 'name' | 'size' | 'duration';
+export type VideoSortBy = 'name' | 'size' | 'duration' | 'date';
 export type SortDir = 'asc' | 'desc';
 
 export interface VideoScanProgressEvent {
   path: string;
   sizeBytes: number | null;
+  modifiedMs: number | null;
 }
 
 export interface VideoScanCompleteEvent {

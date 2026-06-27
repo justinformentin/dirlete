@@ -4,6 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::UNIX_EPOCH;
 
 #[tauri::command]
 pub async fn scan_dirs(request: ScanRequest, app_handle: AppHandle) -> Result<(), String> {
@@ -87,10 +88,16 @@ pub async fn scan_videos(root: String, app_handle: AppHandle) -> Result<(), Stri
                     .unwrap_or_default();
                 if VIDEO_EXTENSIONS.contains(&ext.as_str()) {
                     let path = entry.path().to_string_lossy().to_string();
-                    let size_bytes = entry.metadata().ok().map(|m| m.len());
+                    let metadata = entry.metadata().ok();
+                    let size_bytes = metadata.as_ref().map(|m| m.len());
+                    let modified_ms = metadata
+                        .as_ref()
+                        .and_then(|m| m.modified().ok())
+                        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+                        .map(|duration| duration.as_millis() as u64);
                     let _ = app_handle.emit(
                         "video-scan-progress",
-                        VideoScanProgressEvent { path, size_bytes },
+                        VideoScanProgressEvent { path, size_bytes, modified_ms },
                     );
                     total += 1;
                 }

@@ -78,7 +78,7 @@ export default function VideoPage() {
 
       {culler.activeTab === 'multiwatch' && (
         <MultiWatchPanel
-          videos={culler.videos}
+          videos={culler.filteredSortedVideos}
           pageVideos={culler.multiWatchVideos}
           page={culler.multiWatchPage}
           totalPages={culler.totalMultiWatchPages}

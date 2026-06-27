@@ -68,8 +68,8 @@ export function useVideoCuller() {
     const unsubs: Array<() => void> = [];
 
     listen<VideoScanProgressEvent>('video-scan-progress', (event: Event<VideoScanProgressEvent>) => {
-      const { path, sizeBytes } = event.payload;
-      pendingVideos.current.push({ path, sizeBytes, action: savedActions.current[path] ?? null });
+      const { path, sizeBytes, modifiedMs } = event.payload;
+      pendingVideos.current.push({ path, sizeBytes, modifiedMs, action: savedActions.current[path] ?? null });
       if (!flushTimer.current) flushTimer.current = setTimeout(flushPending, 50);
     }).then((unsubscribe) => unsubs.push(unsubscribe));
 
@@ -119,8 +119,9 @@ export function useVideoCuller() {
 
     const getVal = (v: VideoDisplayItem, by: VideoSortBy): string | number => {
       if (by === 'name') return v.path.split(/[\\/]/).pop()?.toLowerCase() ?? '';
-      if (by === 'size') return v.sizeBytes ?? 0;
-      return v.durationSeconds ?? 0;
+      if (by === 'size') return v.sizeBytes ?? -1;
+      if (by === 'duration') return v.durationSeconds ?? -1;
+      return v.modifiedMs ?? -1;
     };
 
     const compare = (a: VideoDisplayItem, b: VideoDisplayItem, by: VideoSortBy, dir: SortDir): number => {
@@ -144,6 +145,13 @@ export function useVideoCuller() {
 
     return result;
   }, [videos, statusFilter, sizeFilter, durationFilter, groupByFolder, folderSortDir, itemSortBy, itemSortDir]);
+
+  useEffect(() => {
+    setMultiWatchPage((page) => {
+      const maxPage = Math.max(0, Math.ceil(filteredSortedVideos.length / MULTIWATCH_PAGE_SIZE) - 1);
+      return Math.min(page, maxPage);
+    });
+  }, [filteredSortedVideos.length]);
 
   useVideoKeyboardShortcuts({
     activeTab,
@@ -278,8 +286,8 @@ export function useVideoCuller() {
   const keepCount = videos.filter((video) => video.action === 'keep').length;
   const skipCount = videos.filter((video) => video.action === 'skip').length;
   const unmarkedCount = videos.filter((video) => video.action === null).length;
-  const totalMultiWatchPages = Math.ceil(videos.length / MULTIWATCH_PAGE_SIZE);
-  const multiWatchVideos = videos.slice(multiWatchPage * MULTIWATCH_PAGE_SIZE, (multiWatchPage + 1) * MULTIWATCH_PAGE_SIZE);
+  const totalMultiWatchPages = Math.ceil(filteredSortedVideos.length / MULTIWATCH_PAGE_SIZE);
+  const multiWatchVideos = filteredSortedVideos.slice(multiWatchPage * MULTIWATCH_PAGE_SIZE, (multiWatchPage + 1) * MULTIWATCH_PAGE_SIZE);
   const modalVideo = modalIndex !== null ? videos[modalIndex] : null;
 
   return {
