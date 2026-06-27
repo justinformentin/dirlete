@@ -6,29 +6,16 @@ import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { open } from '@tauri-apps/plugin-dialog';
 import VideoCard from '../components/VideoCard';
 import { formatBytes } from '../utils/formatBytes';
+import EmptyState from '../ui/EmptyState';
+import FloatingDeleteBar from '../features/video/FloatingDeleteBar';
+import VideoSidebar from '../features/video/VideoSidebar';
+import VideoTabs from '../features/video/VideoTabs';
+import { loadSavedActions, persistActions } from '../features/video/videoActionsStorage';
 import { VideoAction, VideoItem, VideoScanProgressEvent, VideoScanCompleteEvent } from '../types/ipc';
 import { Rewind, FastForward, Play, Pause, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useSidebar } from '../SidebarContext';
 
-const STORAGE_KEY = 'video-culler-actions';
 const MULTIWATCH_PAGE_SIZE = 9;
-
-function loadSavedActions(): Record<string, VideoAction> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function persistActions(actions: Record<string, VideoAction>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(actions));
-  } catch {
-    // ignore storage errors
-  }
-}
 
 export default function VideoPage() {
   const setSidebarContent = useSidebar();
@@ -334,100 +321,25 @@ export default function VideoPage() {
   // ── Sidebar injection ────────────────────────────────────────────────────────
   useEffect(() => {
     setSidebarContent(
-      <div className="p-4 space-y-5 text-sm">
-        {/* Current Folder */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">
-            Current Folder
-          </p>
-          <p className="text-xs text-muted font-mono truncate mb-2.5 leading-relaxed" title={root}>
-            {root || 'None selected'}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={openFolderPicker}
-              disabled={isScanning || isDeleting}
-              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 transition-colors"
-            >
-              Change
-            </button>
-            <button
-              onClick={handleScan}
-              disabled={isScanning || isDeleting || !root}
-              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 transition-colors"
-            >
-              {isScanning ? 'Scanning…' : 'Rescan'}
-            </button>
-          </div>
-        </div>
-
-        {/* Status */}
-        {videos.length > 0 && (
-          <>
-            <div className="border-t border-border" />
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-3">
-                Status
-              </p>
-              <div className="text-center mb-3">
-                <p className="text-3xl font-bold text-foreground">{videos.length}</p>
-                <p className="text-[10px] text-subtle uppercase tracking-wider">All</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-center bg-surface rounded-lg py-2">
-                  <p className="text-base font-semibold text-foreground">{unmarkedCount}</p>
-                  <p className="text-[10px] text-subtle uppercase tracking-wide">Pending</p>
-                </div>
-                <div className="text-center bg-surface rounded-lg py-2">
-                  <p className="text-base font-semibold text-green-400">{keepCount}</p>
-                  <p className="text-[10px] text-subtle uppercase tracking-wide">Keep</p>
-                </div>
-                <div className="text-center bg-surface rounded-lg py-2">
-                  <p className="text-base font-semibold text-muted">{skipCount}</p>
-                  <p className="text-[10px] text-subtle uppercase tracking-wide">Skipped</p>
-                </div>
-                <div className="text-center bg-surface rounded-lg py-2">
-                  <p className="text-base font-semibold text-red-400">{deleteCount}</p>
-                  <p className="text-[10px] text-subtle uppercase tracking-wide">Delete</p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      <VideoSidebar
+        root={root}
+        total={videos.length}
+        unmarkedCount={unmarkedCount}
+        keepCount={keepCount}
+        skipCount={skipCount}
+        deleteCount={deleteCount}
+        isScanning={isScanning}
+        isDeleting={isDeleting}
+        onPickFolder={openFolderPicker}
+        onScan={handleScan}
+      />,
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [root, isScanning, isDeleting, videos.length, keepCount, deleteCount, unmarkedCount, skipCount]);
 
   return (
     <div>
-      {/* Tabs */}
-      {videos.length > 0 && (
-        <div className="mb-4 flex gap-1 border-b border-border">
-          <button
-            className={[
-              'px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors',
-              activeTab === 'browse'
-                ? 'bg-card text-foreground border border-b-card border-border -mb-px'
-                : 'text-subtle hover:text-muted',
-            ].join(' ')}
-            onClick={() => setActiveTab('browse')}
-          >
-            Browse ({videos.length})
-          </button>
-          <button
-            className={[
-              'px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors',
-              activeTab === 'multiwatch'
-                ? 'bg-card text-foreground border border-b-card border-border -mb-px'
-                : 'text-subtle hover:text-muted',
-            ].join(' ')}
-            onClick={() => setActiveTab('multiwatch')}
-          >
-            Multi-Watch
-          </button>
-        </div>
-      )}
+      <VideoTabs activeTab={activeTab} count={videos.length} onChange={setActiveTab} />
 
       {/* Browse tab */}
       {activeTab === 'browse' && videos.length > 0 && (
@@ -544,28 +456,16 @@ export default function VideoPage() {
         </div>
       )}
 
-      {/* Floating delete bar */}
-      {deleteCount > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-6 py-3 bg-red-600 text-white rounded-2xl shadow-2xl">
-          <span className="text-sm font-medium">
-            {formatBytes(deleteSize)} selected
-          </span>
-          <button
-            className="px-5 py-2 bg-white text-red-600 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            onClick={handleDeleteMarked}
-            disabled={isDeleting || isScanning}
-          >
-            {isDeleting ? 'Deleting…' : `Delete ${deleteCount} Video${deleteCount !== 1 ? 's' : ''}`}
-          </button>
-        </div>
-      )}
+      <FloatingDeleteBar
+        count={deleteCount}
+        sizeBytes={deleteSize}
+        isDeleting={isDeleting}
+        isScanning={isScanning}
+        onDelete={handleDeleteMarked}
+      />
 
-      {/* Empty state */}
       {!isScanning && videos.length === 0 && (
-        <div className="bg-card p-12 rounded-xl text-center text-subtle">
-          <p className="text-lg font-medium mb-1">No videos found</p>
-          <p className="text-sm">Select a folder and click "Rescan" to get started.</p>
-        </div>
+        <EmptyState title="No videos found" description="Select a folder and click “Rescan” to get started." />
       )}
 
       {/* ── Video Modal ──────────────────────────────────────────────────────────── */}
