@@ -18,6 +18,7 @@ export default function VideoPage() {
       <VideoSidebar
         root={culler.root}
         total={culler.videos.length}
+        filteredCount={culler.filteredSortedVideos.length}
         unmarkedCount={culler.unmarkedCount}
         keepCount={culler.keepCount}
         skipCount={culler.skipCount}
@@ -26,19 +27,47 @@ export default function VideoPage() {
         isDeleting={culler.isDeleting}
         onPickFolder={culler.openFolderPicker}
         onScan={culler.scan}
+        statusFilter={culler.statusFilter}
+        onStatusFilterChange={culler.setStatusFilter}
+        sizeFilter={culler.sizeFilter}
+        maxSizeBytes={culler.maxSizeBytes}
+        onSizeFilterChange={culler.setSizeFilter}
+        durationFilter={culler.durationFilter}
+        maxDurationSeconds={culler.maxDurationSeconds}
+        onDurationFilterChange={culler.setDurationFilter}
+        groupByFolder={culler.groupByFolder}
+        onGroupByFolderChange={culler.setGroupByFolder}
+        folderSortDir={culler.folderSortDir}
+        onFolderSortDirChange={culler.setFolderSortDir}
+        itemSortBy={culler.itemSortBy}
+        onItemSortByChange={culler.setItemSortBy}
+        itemSortDir={culler.itemSortDir}
+        onItemSortDirChange={culler.setItemSortDir}
+        cardSize={culler.cardSize}
+        onCardSizeChange={culler.setCardSize}
       />,
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [culler.root, culler.isScanning, culler.isDeleting, culler.videos.length, culler.keepCount, culler.deleteCount, culler.unmarkedCount, culler.skipCount]);
+  }, [
+    culler.root, culler.isScanning, culler.isDeleting,
+    culler.videos.length, culler.keepCount, culler.deleteCount, culler.unmarkedCount, culler.skipCount,
+    culler.filteredSortedVideos.length,
+    culler.statusFilter, culler.sizeFilter, culler.durationFilter,
+    culler.maxSizeBytes, culler.maxDurationSeconds,
+    culler.groupByFolder, culler.folderSortDir, culler.itemSortBy, culler.itemSortDir,
+    culler.cardSize,
+  ]);
 
   return (
     <div>
-      <VideoTabs activeTab={culler.activeTab} count={culler.videos.length} onChange={culler.setActiveTab} />
+      <VideoTabs activeTab={culler.activeTab} count={culler.filteredSortedVideos.length} onChange={culler.setActiveTab} />
 
       {culler.activeTab === 'browse' && (
         <VideoBrowseGrid
-          videos={culler.videos}
+          videos={culler.filteredSortedVideos}
           focusedIndex={culler.focusedIndex}
+          cardSize={culler.cardSize}
+          groupByFolder={culler.groupByFolder}
           videoRefs={culler.videoRefs}
           onFocus={culler.setFocusedIndex}
           onAction={culler.applyAction}
@@ -74,7 +103,11 @@ export default function VideoPage() {
       />
 
       {!culler.isScanning && culler.videos.length === 0 && (
-        <EmptyState title="No videos found" description="Select a folder and click “Rescan” to get started." />
+        <EmptyState title="No videos found" description={'Select a folder and click \u201cRescan\u201d to get started.'} />
+      )}
+
+      {!culler.isScanning && culler.videos.length > 0 && culler.filteredSortedVideos.length === 0 && (
+        <EmptyState title="No videos match filters" description="Try adjusting your filters in the sidebar." />
       )}
 
       <VideoModal

@@ -83,6 +83,14 @@ export interface VideoItem {
   durationSeconds?: number;
 }
 
+export interface VideoDisplayItem extends VideoItem {
+  globalIndex: number;
+}
+
+export type StatusFilter = 'all' | 'pending' | 'keep' | 'skip' | 'delete';
+export type VideoSortBy = 'name' | 'size' | 'duration';
+export type SortDir = 'asc' | 'desc';
+
 export interface VideoScanProgressEvent {
   path: string;
   sizeBytes: number | null;

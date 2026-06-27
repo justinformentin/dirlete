@@ -1,10 +1,11 @@
 import { MutableRefObject, RefObject, useEffect } from 'react';
-import { VideoAction, VideoItem } from '../../types/ipc';
+import { VideoAction, VideoDisplayItem, VideoItem } from '../../types/ipc';
 import { VideoTab } from './VideoTabs';
 
 interface UseVideoKeyboardShortcutsArgs {
   activeTab: VideoTab;
   videos: VideoItem[];
+  displayVideos: VideoDisplayItem[];
   focusedIndex: number | null;
   modalIndex: number | null;
   videoRefs: MutableRefObject<(HTMLVideoElement | null)[]>;
@@ -34,6 +35,7 @@ const seekVideo = (video: HTMLVideoElement | null | undefined, seconds: number) 
 export function useVideoKeyboardShortcuts({
   activeTab,
   videos,
+  displayVideos,
   focusedIndex,
   modalIndex,
   videoRefs,
@@ -91,8 +93,13 @@ export function useVideoKeyboardShortcuts({
       }
 
       if (activeTab !== 'browse') return;
+
+      const navVideos = displayVideos.length > 0 ? displayVideos : videos.map((v, i) => ({ ...v, globalIndex: i }));
+
       if (focusedIndex === null) {
-        if ((event.key === 'ArrowRight' || event.key === 'ArrowDown') && videos.length > 0) onFocusIndexChange(0);
+        if ((event.key === 'ArrowRight' || event.key === 'ArrowDown') && navVideos.length > 0) {
+          onFocusIndexChange(navVideos[0].globalIndex);
+        }
         return;
       }
 
@@ -104,10 +111,20 @@ export function useVideoKeyboardShortcuts({
         onApplyAction(focusedIndex, videos[focusedIndex]?.action === 'skip' ? null : 'skip');
       } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
         event.preventDefault();
-        onFocusIndexChange(Math.min(focusedIndex + 1, videos.length - 1));
+        const curPos = navVideos.findIndex((v) => v.globalIndex === focusedIndex);
+        if (curPos >= 0) {
+          const next = navVideos[Math.min(curPos + 1, navVideos.length - 1)];
+          if (next) onFocusIndexChange(next.globalIndex);
+        } else if (navVideos.length > 0) {
+          onFocusIndexChange(navVideos[0].globalIndex);
+        }
       } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
         event.preventDefault();
-        onFocusIndexChange(Math.max(focusedIndex - 1, 0));
+        const curPos = navVideos.findIndex((v) => v.globalIndex === focusedIndex);
+        if (curPos > 0) {
+          const prev = navVideos[curPos - 1];
+          if (prev) onFocusIndexChange(prev.globalIndex);
+        }
       } else if (event.key === '[') {
         seekVideo(videoRefs.current[focusedIndex], -5);
       } else if (event.key === ']') {
@@ -120,5 +137,5 @@ export function useVideoKeyboardShortcuts({
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [activeTab, focusedIndex, modalIndex, modalVideoRef, multiWatchRefs, onApplyAction, onFocusIndexChange, onModalIndexChange, onModalPlayingChange, onMultiWatchPlayingChange, videoRefs, videos]);
+  }, [activeTab, displayVideos, focusedIndex, modalIndex, modalVideoRef, multiWatchRefs, onApplyAction, onFocusIndexChange, onModalIndexChange, onModalPlayingChange, onMultiWatchPlayingChange, videoRefs, videos]);
 }

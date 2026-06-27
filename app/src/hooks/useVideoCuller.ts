@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen, Event } from '@tauri-apps/api/event';
@@ -7,7 +7,10 @@ import { loadSavedActions, persistActions } from '../features/video/videoActions
 import { useVideoKeyboardShortcuts } from '../features/video/useVideoKeyboardShortcuts';
 import { VideoTab } from '../features/video/VideoTabs';
 import { formatBytes } from '../utils/formatBytes';
-import { VideoAction, VideoItem, VideoScanCompleteEvent, VideoScanProgressEvent } from '../types/ipc';
+import {
+  VideoAction, VideoDisplayItem, VideoItem, VideoScanCompleteEvent, VideoScanProgressEvent,
+  StatusFilter, VideoSortBy, SortDir,
+} from '../types/ipc';
 
 export const MULTIWATCH_PAGE_SIZE = 9;
 
@@ -27,6 +30,20 @@ export function useVideoCuller() {
   const [isMultiWatchPlaying, setIsMultiWatchPlaying] = useState(false);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [modalIsPlaying, setModalIsPlaying] = useState(false);
+
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sizeFilter, setSizeFilter] = useState<[number, number] | null>(null);
+  const [durationFilter, setDurationFilter] = useState<[number, number] | null>(null);
+
+  // Sort state
+  const [groupByFolder, setGroupByFolder] = useState(false);
+  const [folderSortDir, setFolderSortDir] = useState<SortDir>('asc');
+  const [itemSortBy, setItemSortBy] = useState<VideoSortBy>('name');
+  const [itemSortDir, setItemSortDir] = useState<SortDir>('asc');
+
+  // View state
+  const [cardSize, setCardSize] = useState(80);
 
   const multiWatchRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const modalVideoRef = useRef<HTMLVideoElement>(null);
@@ -78,9 +95,60 @@ export function useVideoCuller() {
     });
   }, []);
 
+  // Derived slider bounds
+  const maxSizeBytes = videos.reduce((acc, v) => Math.max(acc, v.sizeBytes ?? 0), 0);
+  const maxDurationSeconds = videos.reduce((acc, v) => Math.max(acc, v.durationSeconds ?? 0), 0);
+
+  // Filtered and sorted display list
+  const filteredSortedVideos = useMemo((): VideoDisplayItem[] => {
+    let result: VideoDisplayItem[] = videos.map((v, i) => ({ ...v, globalIndex: i }));
+
+    if (statusFilter !== 'all') {
+      result = result.filter((v) => (statusFilter === 'pending' ? v.action === null : v.action === statusFilter));
+    }
+
+    if (sizeFilter) {
+      const [minS, maxS] = sizeFilter;
+      result = result.filter((v) => { const s = v.sizeBytes ?? 0; return s >= minS && s <= maxS; });
+    }
+
+    if (durationFilter) {
+      const [minD, maxD] = durationFilter;
+      result = result.filter((v) => { const d = v.durationSeconds ?? 0; return d >= minD && d <= maxD; });
+    }
+
+    const getVal = (v: VideoDisplayItem, by: VideoSortBy): string | number => {
+      if (by === 'name') return v.path.split(/[\\/]/).pop()?.toLowerCase() ?? '';
+      if (by === 'size') return v.sizeBytes ?? 0;
+      return v.durationSeconds ?? 0;
+    };
+
+    const compare = (a: VideoDisplayItem, b: VideoDisplayItem, by: VideoSortBy, dir: SortDir): number => {
+      const av = getVal(a, by);
+      const bv = getVal(b, by);
+      const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number);
+      return dir === 'asc' ? cmp : -cmp;
+    };
+
+    if (groupByFolder) {
+      const getFolder = (v: VideoDisplayItem) => v.path.replace(/[\\/][^\\/]*$/, '').toLowerCase();
+      result.sort((a, b) => {
+        const fc = getFolder(a).localeCompare(getFolder(b));
+        const fCmp = folderSortDir === 'asc' ? fc : -fc;
+        if (fCmp !== 0) return fCmp;
+        return compare(a, b, itemSortBy, itemSortDir);
+      });
+    } else {
+      result.sort((a, b) => compare(a, b, itemSortBy, itemSortDir));
+    }
+
+    return result;
+  }, [videos, statusFilter, sizeFilter, durationFilter, groupByFolder, folderSortDir, itemSortBy, itemSortDir]);
+
   useVideoKeyboardShortcuts({
     activeTab,
     videos,
+    displayVideos: filteredSortedVideos,
     focusedIndex,
     modalIndex,
     videoRefs,
@@ -220,7 +288,17 @@ export function useVideoCuller() {
     modalSrc: modalVideo ? convertFileSrc(modalVideo.path) : '', modalAction: modalVideo?.action ?? null,
     multiWatchVideos, totalMultiWatchPages, deleteCount, deleteSize, keepCount, skipCount, unmarkedCount,
     videoRefs, multiWatchRefs, modalVideoRef,
+    // Filter
+    statusFilter, sizeFilter, durationFilter, maxSizeBytes, maxDurationSeconds,
+    filteredSortedVideos,
+    // Sort
+    groupByFolder, folderSortDir, itemSortBy, itemSortDir,
+    // View
+    cardSize,
     setActiveTab, setFocusedIndex, setModalIndex, setModalIsPlaying,
+    setStatusFilter, setSizeFilter, setDurationFilter,
+    setGroupByFolder, setFolderSortDir, setItemSortBy, setItemSortDir,
+    setCardSize,
     openFolderPicker, scan, applyAction, handleDurationLoaded, openModal, closeModal,
     toggleModalPlay, seekModal, handleModalVideoLoaded, toggleMultiWatchPlay, seekMultiWatch,
     changeMultiWatchPage, deleteMarked,
