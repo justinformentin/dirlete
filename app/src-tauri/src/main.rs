@@ -13,7 +13,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .manage(Arc::new(AtomicBool::new(false)))
-        .invoke_handler(tauri::generate_handler![scan_dirs, cancel_scan, start_delete_job, open_folder])
+        .invoke_handler(tauri::generate_handler![scan_dirs, cancel_scan, start_delete_job, open_folder, scan_videos, delete_files])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

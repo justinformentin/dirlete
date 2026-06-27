@@ -74,6 +74,18 @@ pub struct DeleteProgressEvent {
     pub current_status: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct VideoScanProgressEvent {
+    pub path: String,
+    #[serde(rename = "sizeBytes")]
+    pub size_bytes: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct VideoScanCompleteEvent {
+    pub total: usize,
+}
+
 // Optional: Cancel functionality for future implementation
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]

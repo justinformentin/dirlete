@@ -1,6 +1,6 @@
 use crate::cleaner::models::*;
 use crate::cleaner::{delete, scan};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -67,6 +67,53 @@ pub async fn open_folder(path: String) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+const VIDEO_EXTENSIONS: &[&str] = &[
+    "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
+    "mpg", "mpeg", "m2ts", "ts", "mts", "vob", "ogv",
+];
+
+#[tauri::command]
+pub async fn scan_videos(root: String, app_handle: AppHandle) -> Result<(), String> {
+    std::thread::spawn(move || {
+        let mut total = 0usize;
+        for entry in walkdir::WalkDir::new(&root).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                let ext = entry
+                    .path()
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_lowercase())
+                    .unwrap_or_default();
+                if VIDEO_EXTENSIONS.contains(&ext.as_str()) {
+                    let path = entry.path().to_string_lossy().to_string();
+                    let size_bytes = entry.metadata().ok().map(|m| m.len());
+                    let _ = app_handle.emit(
+                        "video-scan-progress",
+                        VideoScanProgressEvent { path, size_bytes },
+                    );
+                    total += 1;
+                }
+            }
+        }
+        let _ = app_handle.emit("video-scan-complete", VideoScanCompleteEvent { total });
+    });
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_files(paths: Vec<String>) -> Result<(), String> {
+    let mut errors: Vec<String> = Vec::new();
+    for path in &paths {
+        if let Err(e) = std::fs::remove_file(path) {
+            errors.push(format!("{}: {}", path, e));
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n"))
+    }
 }
 
 // Optional: Cancel functionality would require shared state management

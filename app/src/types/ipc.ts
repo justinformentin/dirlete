@@ -72,3 +72,22 @@ export interface CancelResponse {
   jobId: string;
   cancelled: boolean;
 }
+
+// Video culler types
+export type VideoAction = 'keep' | 'delete' | 'skip';
+
+export interface VideoItem {
+  path: string;
+  sizeBytes: number | null;
+  action: VideoAction | null;
+  durationSeconds?: number;
+}
+
+export interface VideoScanProgressEvent {
+  path: string;
+  sizeBytes: number | null;
+}
+
+export interface VideoScanCompleteEvent {
+  total: number;
+}
