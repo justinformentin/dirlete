@@ -10,16 +10,16 @@
   --background: #f5f3ff;
   --sidebar: #ede8fb;
   --card: #ffffff;
-  --surface: #f0edfb;
+  --surface: #f5f3ff;
   --surface-hover: #e8e3f7;
 
   --foreground: #1a1825;
-  --muted: #4b5563;
+  --muted: #c1cbda;
   --subtle: #6b7280;
-  --border: #e5e7eb;
+  --border: #f5eaea;
 
-  --btn-bg: #e9e5f7;
-  --btn-hover: #ddd8f0;
+  --btn-bg: #f4f1ff;
+  --btn-hover: #ffffff;
   --btn-text: #374151;
 
   --theme-primary: #7c3aed;
@@ -37,9 +37,9 @@
   --surface-hover: #2e2a40;
 
   --foreground: #f0eef8;
-  --muted: #9ca3af;
-  --subtle: #6b7280;
-  --border: #2a2639;
+  --muted: #939aa5;
+  --subtle: #a9b0be;
+  --border: #4f4966;
 
   --btn-bg: #252135;
   --btn-hover: #2e2a40;
