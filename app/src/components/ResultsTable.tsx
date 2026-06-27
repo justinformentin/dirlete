@@ -104,7 +104,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
   };
 
   return (
-    <div>
+    <div className="h-[calc(100%-3rem)]">
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-xl font-bold text-foreground">Found Folders</h2>
         <div className="text-sm font-medium text-muted bg-surface px-3 py-1.5 rounded-lg">
@@ -112,7 +112,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
         </div>
       </div>
 
-      <div className="max-h-[500px] overflow-y-auto border border-border rounded-xl shadow-inner">
+      <div className="h-[calc(100%-3rem)] overflow-y-auto border border-border rounded-xl shadow-inner">
         <table className="w-full border-collapse">
           <thead className="sticky top-0 bg-surface z-10 shadow-sm">
             <tr>
