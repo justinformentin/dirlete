@@ -31,6 +31,8 @@ export default function DualRangeSlider({ min, max, value, onChange, formatLabel
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect || rect.width === 0) return min;
     const pct = clamp((clientX - rect.left) / rect.width, 0, 1);
+    if (pct <= 0.001) return min;
+    if (pct >= 0.999) return safeMax;
     return clamp(snapToStep(min + pct * range, min, step), min, safeMax);
   }, [min, range, safeMax, step]);
 
