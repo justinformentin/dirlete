@@ -3,6 +3,7 @@ import PatternInput from '../../components/PatternInput';
 import Button from '../../ui/Button';
 import SidebarSection from '../../ui/SidebarSection';
 import Spinner from '../../ui/Spinner';
+import Checkbox from '../../ui/Checkbox';
 
 interface FilesSidebarProps {
   root: string;
@@ -42,14 +43,22 @@ export default function FilesSidebar(props: FilesSidebarProps) {
       </SidebarSection>
 
       <SidebarSection title="Options">
-        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer mb-2 select-none">
-          <input type="checkbox" checked={props.skipNested} onChange={(e) => props.onSkipNestedChange(e.target.checked)} disabled={props.isDeleting} className="w-3.5 h-3.5 accent-purple-500" />
-          Skip nested matches
-        </label>
-        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
-          <input type="checkbox" checked={props.useGlobPatterns} onChange={(e) => props.onUseGlobPatternsChange(e.target.checked)} disabled={props.isDeleting} className="w-3.5 h-3.5 accent-purple-500" />
-          Use wildcard patterns
-        </label>
+        <Checkbox
+          checked={props.skipNested}
+          onChange={(e) => props.onSkipNestedChange(e.target.checked)}
+          disabled={props.isDeleting}
+          className="w-3.5 h-3.5 accent-purple-500"
+          labelClassName="text-xs text-muted mb-2"
+          label="Skip nested matches"
+        />
+        <Checkbox
+          checked={props.useGlobPatterns}
+          onChange={(e) => props.onUseGlobPatternsChange(e.target.checked)}
+          disabled={props.isDeleting}
+          className="w-3.5 h-3.5 accent-purple-500"
+          labelClassName="text-xs text-muted"
+          label="Use wildcard patterns"
+        />
       </SidebarSection>
 
       <SidebarSection>

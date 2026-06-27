@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'lightDanger' | 'warning';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'lightDanger' | 'warning' | 'unstyled';
 type ButtonSize = 'xs' | 'sm' | 'md' | 'icon';
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -10,6 +10,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: 'text-muted hover:text-foreground hover:bg-surface',
   lightDanger: 'bg-white text-red-600 hover:bg-red-50',
   warning: 'bg-amber-500 hover:bg-amber-600 text-white',
+  unstyled: '',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
