@@ -32,8 +32,6 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const [isNearViewport, setIsNearViewport] = useState(false);
 
-    // Only render the <video> element once the card scrolls near the viewport.
-    // This prevents dozens of concurrent metadata loads from freezing the UI.
     useEffect(() => {
       const el = containerRef.current;
       if (!el) return;
@@ -44,7 +42,7 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
             observer.disconnect();
           }
         },
-        { rootMargin: '400px' } // start loading 400px before entering view
+        { rootMargin: '400px' }
       );
       observer.observe(el);
       return () => observer.disconnect();
@@ -57,16 +55,16 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
       }
     };
 
-    const actionStyles: Record<VideoAction, string> = {
-      keep: 'ring-4 ring-green-500',
+    const actionRings: Record<VideoAction, string> = {
+      keep:   'ring-4 ring-green-500',
       delete: 'ring-4 ring-red-500',
-      skip: 'ring-4 ring-gray-400',
+      skip:   'ring-4 ring-gray-400',
     };
 
     const cardClass = [
-      'rounded-xl overflow-hidden bg-gray-900 flex flex-col cursor-pointer transition-all duration-150',
-      isFocused ? 'ring-2 ring-sky-400 ring-offset-2' : '',
-      action ? actionStyles[action] : '',
+      'rounded-xl overflow-hidden bg-card flex flex-col cursor-pointer transition-all duration-150',
+      isFocused ? 'ring-2 ring-sky-400 ring-offset-2 ring-offset-background' : '',
+      action ? actionRings[action] : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -87,19 +85,15 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
               onLoadedMetadata={handleLoadedMetadata}
             />
           ) : (
-            // Skeleton placeholder — no video element until near viewport
-            <div className="w-full h-full flex items-center justify-center text-gray-600">
+            <div className="w-full h-full flex items-center justify-center text-muted">
               <Film className="w-8 h-8 opacity-40" />
             </div>
           )}
 
-          {/* Expand button — visible on hover */}
+          {/* Expand button */}
           <button
             className="absolute top-2 left-2 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-black/70"
-            onClick={(e) => {
-              e.stopPropagation();
-              onExpand();
-            }}
+            onClick={(e) => { e.stopPropagation(); onExpand(); }}
             title="Expand"
           >
             <Maximize2 className="w-4 h-4" />
@@ -109,13 +103,11 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
           {action && (
             <div
               className={[
-                'absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide',
-                action === 'keep' && 'bg-green-500 text-white',
-                action === 'delete' && 'bg-red-500 text-white',
-                action === 'skip' && 'bg-gray-500 text-white',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+                'absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide text-white',
+                action === 'keep'   && 'bg-green-500',
+                action === 'delete' && 'bg-red-500',
+                action === 'skip'   && 'bg-gray-500',
+              ].filter(Boolean).join(' ')}
             >
               {action}
             </div>
@@ -123,12 +115,12 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
         </div>
 
         {/* Info + actions */}
-        <div className="p-3 flex flex-col gap-2 bg-white">
+        <div className="p-3 flex flex-col gap-2 bg-card">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-medium text-gray-800 truncate flex-1" title={path}>
+            <p className="text-sm font-medium text-foreground truncate flex-1" title={path}>
               {filename}
             </p>
-            <div className="flex items-center gap-2 shrink-0 text-xs text-gray-500">
+            <div className="flex items-center gap-2 shrink-0 text-xs text-subtle">
               {durationSeconds != null && <span>{formatDuration(durationSeconds)}</span>}
               {sizeBytes != null && <span>{formatBytes(sizeBytes)}</span>}
             </div>
@@ -141,12 +133,9 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
                 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors',
                 action === 'keep'
                   ? 'bg-green-500 text-white'
-                  : 'bg-green-100 text-green-700 hover:bg-green-200',
+                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-800/60',
               ].join(' ')}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(action === 'keep' ? null : 'keep');
-              }}
+              onClick={(e) => { e.stopPropagation(); onAction(action === 'keep' ? null : 'keep'); }}
               title="Keep (K)"
             >
               Keep
@@ -156,12 +145,9 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
                 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors',
                 action === 'delete'
                   ? 'bg-red-500 text-white'
-                  : 'bg-red-100 text-red-600 hover:bg-red-200',
+                  : 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-800/60',
               ].join(' ')}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(action === 'delete' ? null : 'delete');
-              }}
+              onClick={(e) => { e.stopPropagation(); onAction(action === 'delete' ? null : 'delete'); }}
               title="Delete (D)"
             >
               Delete

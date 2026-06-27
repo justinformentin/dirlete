@@ -39,26 +39,18 @@ export default function VideoPage() {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Tab state
   const [activeTab, setActiveTab] = useState<'browse' | 'multiwatch'>('browse');
 
-  // Multi-watch state
   const [multiWatchPage, setMultiWatchPage] = useState(0);
   const [isMultiWatchPlaying, setIsMultiWatchPlaying] = useState(false);
   const multiWatchRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  // Modal state
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [modalIsPlaying, setModalIsPlaying] = useState(false);
   const modalVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Persist actions separately so we can save them without re-rendering everything
   const savedActions = useRef<Record<string, VideoAction>>(loadSavedActions());
-
-  // Array of video element refs indexed by position (browse tab)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-
-  // Buffer for batching incoming scan events to reduce re-renders
   const pendingVideos = useRef<VideoItem[]>([]);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -87,10 +79,7 @@ export default function VideoPage() {
     }).then((u) => unsubs.push(u));
 
     listen<VideoScanCompleteEvent>('video-scan-complete', () => {
-      // Flush any remaining buffered videos before marking scan complete
-      if (flushTimer.current) {
-        clearTimeout(flushTimer.current);
-      }
+      if (flushTimer.current) clearTimeout(flushTimer.current);
       flushPending();
       setIsScanning(false);
     }).then((u) => unsubs.push(u));
@@ -98,16 +87,14 @@ export default function VideoPage() {
     return () => unsubs.forEach((u) => u());
   }, [flushPending]);
 
-  // ── Keyboard navigation & shortcuts ─────────────────────────────────────────
+  // ── Keyboard navigation ──────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      // ── Modal mode ──
       if (modalIndex !== null) {
         if (e.key === 'Escape') {
-          setModalIndex(null);
-          setModalIsPlaying(false);
+          setModalIndex(null); setModalIsPlaying(false);
         } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
           e.preventDefault();
           setModalIndex((i) => (i !== null ? Math.min(i + 1, videos.length - 1) : null));
@@ -137,7 +124,6 @@ export default function VideoPage() {
         return;
       }
 
-      // ── Multi-watch tab ──
       if (activeTab === 'multiwatch') {
         if (e.key === ' ') {
           e.preventDefault();
@@ -153,7 +139,6 @@ export default function VideoPage() {
         return;
       }
 
-      // ── Grid mode (browse tab only) ──
       if (activeTab !== 'browse') return;
 
       if (focusedIndex === null) {
@@ -185,10 +170,7 @@ export default function VideoPage() {
       } else if (e.key === ' ') {
         e.preventDefault();
         const el = videoRefs.current[idx];
-        if (el) {
-          if (el.paused) el.play().catch(() => {});
-          else el.pause();
-        }
+        if (el) { if (el.paused) el.play().catch(() => {}); else el.pause(); }
       }
     };
 
@@ -223,22 +205,13 @@ export default function VideoPage() {
     });
   }, []);
 
-  // ── Modal helpers ─────────────────────────────────────────────────────────────
-  const openModal = (idx: number) => {
-    setModalIndex(idx);
-    setModalIsPlaying(false);
-  };
+  const openModal = (idx: number) => { setModalIndex(idx); setModalIsPlaying(false); };
 
   const toggleModalPlay = () => {
     const el = modalVideoRef.current;
     if (!el) return;
-    if (modalIsPlaying) {
-      el.pause();
-      setModalIsPlaying(false);
-    } else {
-      el.play().catch(() => {});
-      setModalIsPlaying(true);
-    }
+    if (modalIsPlaying) { el.pause(); setModalIsPlaying(false); }
+    else { el.play().catch(() => {}); setModalIsPlaying(true); }
   };
 
   const seekModal = (seconds: number) => {
@@ -246,24 +219,19 @@ export default function VideoPage() {
     if (el) el.currentTime = Math.max(0, Math.min(el.duration || 0, el.currentTime + seconds));
   };
 
-  // When modal navigates to a new video, autoplay if was playing
   const handleModalVideoLoaded = () => {
     if (modalIsPlaying && modalVideoRef.current) {
       modalVideoRef.current.play().catch(() => {});
     }
   };
 
-  // ── Folder picker ─────────────────────────────────────────────────────────────
   const openFolderPicker = useCallback(async () => {
     try {
       const selected = await open({ directory: true, multiple: false, title: 'Select Video Folder' });
       if (selected) setRoot(selected);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }, []);
 
-  // ── Scan ──────────────────────────────────────────────────────────────────────
   const handleScan = async () => {
     if (!root) return;
     videoRefs.current.forEach((v) => v?.pause());
@@ -278,7 +246,6 @@ export default function VideoPage() {
     setModalIndex(null);
     setMultiWatchPage(0);
     setIsScanning(true);
-
     try {
       await invoke('scan_videos', { root });
     } catch (err) {
@@ -287,7 +254,6 @@ export default function VideoPage() {
     }
   };
 
-  // ── Multi-watch controls ──────────────────────────────────────────────────────
   const toggleMultiWatchPlay = () => {
     if (isMultiWatchPlaying) {
       multiWatchRefs.current.forEach((v) => v?.pause());
@@ -311,7 +277,6 @@ export default function VideoPage() {
     setMultiWatchPage(newPage);
   };
 
-  // ── Delete marked ────────────────────────────────────────────────────────────
   const handleDeleteMarked = async () => {
     const toDelete = videos.filter((v) => v.action === 'delete').map((v) => v.path);
     if (toDelete.length === 0) return;
@@ -343,23 +308,18 @@ export default function VideoPage() {
     }
   };
 
-  // ── Derived counts ───────────────────────────────────────────────────────────
   const deleteCount = videos.filter((v) => v.action === 'delete').length;
-  const deleteSize = videos
-    .filter((v) => v.action === 'delete')
-    .reduce((s, v) => s + (v.sizeBytes ?? 0), 0);
+  const deleteSize = videos.filter((v) => v.action === 'delete').reduce((s, v) => s + (v.sizeBytes ?? 0), 0);
   const keepCount = videos.filter((v) => v.action === 'keep').length;
   const skipCount = videos.filter((v) => v.action === 'skip').length;
   const unmarkedCount = videos.filter((v) => v.action === null).length;
 
-  // ── Multi-watch derived ───────────────────────────────────────────────────────
   const totalMultiWatchPages = Math.ceil(videos.length / MULTIWATCH_PAGE_SIZE);
   const multiWatchVideos = videos.slice(
     multiWatchPage * MULTIWATCH_PAGE_SIZE,
     (multiWatchPage + 1) * MULTIWATCH_PAGE_SIZE
   );
 
-  // ── Modal video data ─────────────────────────────────────────────────────────
   const modalVideo = modalIndex !== null ? videos[modalIndex] : null;
   const modalFilename = modalVideo?.path.split(/[\\/]/).pop() ?? '';
   const modalSrc = modalVideo ? convertFileSrc(modalVideo.path) : '';
@@ -377,24 +337,24 @@ export default function VideoPage() {
       <div className="p-4 space-y-5 text-sm">
         {/* Current Folder */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">
             Current Folder
           </p>
-          <p className="text-xs text-gray-300 font-mono truncate mb-2.5 leading-relaxed" title={root}>
+          <p className="text-xs text-muted font-mono truncate mb-2.5 leading-relaxed" title={root}>
             {root || 'None selected'}
           </p>
           <div className="flex gap-2">
             <button
               onClick={openFolderPicker}
               disabled={isScanning || isDeleting}
-              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-40 transition-colors"
+              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 transition-colors"
             >
               Change
             </button>
             <button
               onClick={handleScan}
               disabled={isScanning || isDeleting || !root}
-              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-40 transition-colors"
+              className="flex-1 text-xs px-2 py-1.5 rounded-md bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 transition-colors"
             >
               {isScanning ? 'Scanning…' : 'Rescan'}
             </button>
@@ -404,31 +364,31 @@ export default function VideoPage() {
         {/* Status */}
         {videos.length > 0 && (
           <>
-            <div className="border-t border-gray-800" />
+            <div className="border-t border-border" />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-3">
                 Status
               </p>
               <div className="text-center mb-3">
-                <p className="text-3xl font-bold text-white">{videos.length}</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">All</p>
+                <p className="text-3xl font-bold text-foreground">{videos.length}</p>
+                <p className="text-[10px] text-subtle uppercase tracking-wider">All</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-center bg-gray-800/50 rounded-lg py-2">
-                  <p className="text-base font-semibold text-white">{unmarkedCount}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Pending</p>
+                <div className="text-center bg-surface rounded-lg py-2">
+                  <p className="text-base font-semibold text-foreground">{unmarkedCount}</p>
+                  <p className="text-[10px] text-subtle uppercase tracking-wide">Pending</p>
                 </div>
-                <div className="text-center bg-gray-800/50 rounded-lg py-2">
+                <div className="text-center bg-surface rounded-lg py-2">
                   <p className="text-base font-semibold text-green-400">{keepCount}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Keep</p>
+                  <p className="text-[10px] text-subtle uppercase tracking-wide">Keep</p>
                 </div>
-                <div className="text-center bg-gray-800/50 rounded-lg py-2">
-                  <p className="text-base font-semibold text-gray-400">{skipCount}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Skipped</p>
+                <div className="text-center bg-surface rounded-lg py-2">
+                  <p className="text-base font-semibold text-muted">{skipCount}</p>
+                  <p className="text-[10px] text-subtle uppercase tracking-wide">Skipped</p>
                 </div>
-                <div className="text-center bg-gray-800/50 rounded-lg py-2">
+                <div className="text-center bg-surface rounded-lg py-2">
                   <p className="text-base font-semibold text-red-400">{deleteCount}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Delete</p>
+                  <p className="text-[10px] text-subtle uppercase tracking-wide">Delete</p>
                 </div>
               </div>
             </div>
@@ -443,13 +403,13 @@ export default function VideoPage() {
     <div>
       {/* Tabs */}
       {videos.length > 0 && (
-        <div className="mb-4 flex gap-1 border-b border-gray-700">
+        <div className="mb-4 flex gap-1 border-b border-border">
           <button
             className={[
               'px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors',
               activeTab === 'browse'
-                ? 'bg-gray-800 text-white border border-b-gray-800 border-gray-700 -mb-px'
-                : 'text-gray-500 hover:text-gray-300',
+                ? 'bg-card text-foreground border border-b-card border-border -mb-px'
+                : 'text-subtle hover:text-muted',
             ].join(' ')}
             onClick={() => setActiveTab('browse')}
           >
@@ -459,8 +419,8 @@ export default function VideoPage() {
             className={[
               'px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors',
               activeTab === 'multiwatch'
-                ? 'bg-gray-800 text-white border border-b-gray-800 border-gray-700 -mb-px'
-                : 'text-gray-500 hover:text-gray-300',
+                ? 'bg-card text-foreground border border-b-card border-border -mb-px'
+                : 'text-subtle hover:text-muted',
             ].join(' ')}
             onClick={() => setActiveTab('multiwatch')}
           >
@@ -471,14 +431,14 @@ export default function VideoPage() {
 
       {/* Browse tab */}
       {activeTab === 'browse' && videos.length > 0 && (
-        <div className="bg-gray-900 p-4 rounded-xl">
-          <p className="mb-4 text-xs text-gray-500">
-            Keyboard shortcuts when a video is focused — <kbd className="bg-gray-700 text-gray-300 px-1 rounded">K</kbd> Keep &nbsp;
-            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">D</kbd> Delete &nbsp;
-            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">S</kbd> Skip &nbsp;
-            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">Space</kbd> Play/Pause &nbsp;
-            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">←→</kbd> Navigate &nbsp;
-            <kbd className="bg-gray-700 text-gray-300 px-1 rounded">[</kbd><kbd className="bg-gray-700 text-gray-300 px-1 rounded">]</kbd> Seek ±5s
+        <div className="bg-card p-4 rounded-xl">
+          <p className="mb-4 text-xs text-subtle">
+            Keyboard shortcuts when a video is focused — <kbd className="bg-surface text-muted px-1 rounded">K</kbd> Keep &nbsp;
+            <kbd className="bg-surface text-muted px-1 rounded">D</kbd> Delete &nbsp;
+            <kbd className="bg-surface text-muted px-1 rounded">S</kbd> Skip &nbsp;
+            <kbd className="bg-surface text-muted px-1 rounded">Space</kbd> Play/Pause &nbsp;
+            <kbd className="bg-surface text-muted px-1 rounded">←→</kbd> Navigate &nbsp;
+            <kbd className="bg-surface text-muted px-1 rounded">[</kbd><kbd className="bg-surface text-muted px-1 rounded">]</kbd> Seek ±5s
           </p>
 
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -503,15 +463,14 @@ export default function VideoPage() {
 
       {/* Multi-Watch tab */}
       {activeTab === 'multiwatch' && videos.length > 0 && (
-        <div className="bg-gray-900 p-4 rounded-xl">
-          {/* Multi-watch controls */}
+        <div className="bg-card p-4 rounded-xl">
           <div className="flex flex-wrap items-center gap-3 mb-5">
             <button
               className={[
                 'px-5 py-2.5 rounded-lg font-medium shadow transition-colors',
                 isMultiWatchPlaying
                   ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white',
+                  : 'bg-btn hover:bg-btn-hover text-btn-text',
               ].join(' ')}
               onClick={toggleMultiWatchPlay}
               disabled={isDeleting}
@@ -521,7 +480,7 @@ export default function VideoPage() {
                 : <div className="flex items-center gap-2"><Play className="w-4 h-4" /><span>Play All</span></div>}
             </button>
             <button
-              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-gray-700 hover:bg-gray-600 text-gray-200"
+              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-btn hover:bg-btn-hover text-btn-text"
               onClick={() => seekMultiWatch(-5)}
               disabled={isDeleting}
               title="Seek all back 5 seconds"
@@ -529,7 +488,7 @@ export default function VideoPage() {
               <div className="flex items-center gap-1"><Rewind className="w-4 h-4 self-center" /><span>5s</span></div>
             </button>
             <button
-              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-gray-700 hover:bg-gray-600 text-gray-200"
+              className="px-4 py-2.5 rounded-lg font-medium shadow transition-colors bg-btn hover:bg-btn-hover text-btn-text"
               onClick={() => seekMultiWatch(5)}
               disabled={isDeleting}
               title="Seek all forward 5 seconds"
@@ -540,18 +499,18 @@ export default function VideoPage() {
             {/* Pagination */}
             <div className="ml-auto flex items-center gap-2">
               <button
-                className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 onClick={() => changeMultiWatchPage(multiWatchPage - 1)}
                 disabled={multiWatchPage === 0}
                 title="Previous page"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm text-gray-400 min-w-[6rem] text-center">
+              <span className="text-sm text-muted min-w-[6rem] text-center">
                 Page {multiWatchPage + 1} of {totalMultiWatchPages}
               </span>
               <button
-                className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 onClick={() => changeMultiWatchPage(multiWatchPage + 1)}
                 disabled={multiWatchPage >= totalMultiWatchPages - 1}
                 title="Next page"
@@ -585,7 +544,7 @@ export default function VideoPage() {
         </div>
       )}
 
-      {/* Floating delete bar — shown whenever videos are marked for deletion */}
+      {/* Floating delete bar */}
       {deleteCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-6 py-3 bg-red-600 text-white rounded-2xl shadow-2xl">
           <span className="text-sm font-medium">
@@ -603,13 +562,13 @@ export default function VideoPage() {
 
       {/* Empty state */}
       {!isScanning && videos.length === 0 && (
-        <div className="bg-gray-900 p-12 rounded-xl text-center text-gray-500">
+        <div className="bg-card p-12 rounded-xl text-center text-subtle">
           <p className="text-lg font-medium mb-1">No videos found</p>
           <p className="text-sm">Select a folder and click "Rescan" to get started.</p>
         </div>
       )}
 
-      {/* ── Video Modal ─────────────────────────────────────────────────────────── */}
+      {/* ── Video Modal ──────────────────────────────────────────────────────────── */}
       {modalIndex !== null && modalVideo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
@@ -677,7 +636,6 @@ export default function VideoPage() {
 
             {/* Controls */}
             <div className="bg-gray-900 px-4 py-3 flex flex-col gap-3">
-              {/* Playback controls */}
               <div className="flex items-center justify-center gap-3">
                 <button
                   className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors"
@@ -711,7 +669,7 @@ export default function VideoPage() {
                     'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors',
                     modalAction === 'keep'
                       ? 'bg-green-500 text-white'
-                      : 'bg-green-900/40 text-green-300 hover:bg-green-800/60',
+                      : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-800/60',
                   ].join(' ')}
                   onClick={() => applyAction(modalIndex, modalAction === 'keep' ? null : 'keep')}
                   title="Keep (K)"
@@ -723,7 +681,7 @@ export default function VideoPage() {
                     'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors',
                     modalAction === 'skip'
                       ? 'bg-gray-500 text-white'
-                      : 'bg-gray-700/60 text-gray-300 hover:bg-gray-600/60',
+                      : 'bg-surface text-muted hover:bg-surface-hover',
                   ].join(' ')}
                   onClick={() => applyAction(modalIndex, modalAction === 'skip' ? null : 'skip')}
                   title="Skip (S)"
@@ -735,7 +693,7 @@ export default function VideoPage() {
                     'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors',
                     modalAction === 'delete'
                       ? 'bg-red-500 text-white'
-                      : 'bg-red-900/40 text-red-300 hover:bg-red-800/60',
+                      : 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-800/60',
                   ].join(' ')}
                   onClick={() => applyAction(modalIndex, modalAction === 'delete' ? null : 'delete')}
                   title="Delete (D)"

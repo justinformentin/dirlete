@@ -210,49 +210,49 @@ export default function FilesPage() {
       <div className="p-4 space-y-5 text-sm">
         {/* Current Folder */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">
             Current Folder
           </p>
-          <p className="text-xs text-gray-300 font-mono truncate mb-2.5 leading-relaxed" title={root}>
+          <p className="text-xs text-muted font-mono truncate mb-2.5 leading-relaxed" title={root}>
             {root || 'None selected'}
           </p>
           <button
             onClick={openFolderPicker}
             disabled={isDeleting}
-            className="w-full text-xs px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-40 transition-colors"
+            className="w-full text-xs px-3 py-1.5 rounded-md bg-btn hover:bg-btn-hover text-btn-text disabled:opacity-40 transition-colors"
           >
             Change Folder
           </button>
         </div>
 
-        <div className="border-t border-gray-800" />
+        <div className="border-t border-border" />
 
         {/* Folder Patterns */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">
             Folder Patterns
           </p>
           <PatternInput patterns={patterns} onPatternsChange={setPatterns} disabled={isDeleting} />
         </div>
 
-        <div className="border-t border-gray-800" />
+        <div className="border-t border-border" />
 
         {/* Ignore Directories */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">
             Ignore Directories
           </p>
           <IgnorePathsInput ignorePaths={ignorePaths} onIgnorePathsChange={setIgnorePaths} disabled={isDeleting} />
         </div>
 
-        <div className="border-t border-gray-800" />
+        <div className="border-t border-border" />
 
         {/* Options */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-subtle mb-2">
             Options
           </p>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer mb-2 select-none">
+          <label className="flex items-center gap-2 text-xs text-muted cursor-pointer mb-2 select-none">
             <input
               type="checkbox"
               checked={skipNested}
@@ -262,7 +262,7 @@ export default function FilesPage() {
             />
             Skip nested matches
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
             <input
               type="checkbox"
               checked={useGlobPatterns}
@@ -274,7 +274,7 @@ export default function FilesPage() {
           </label>
         </div>
 
-        <div className="border-t border-gray-800" />
+        <div className="border-t border-border" />
 
         {/* Scan */}
         <div className="flex gap-2">
@@ -295,7 +295,7 @@ export default function FilesPage() {
           {isScanning && (
             <button
               onClick={handleCancelScan}
-              className="text-xs px-3 py-2 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+              className="text-xs px-3 py-2 rounded-md bg-btn hover:bg-btn-hover text-btn-text transition-colors"
             >
               Stop
             </button>
@@ -307,7 +307,7 @@ export default function FilesPage() {
   }, [root, isScanning, isDeleting, patterns, ignorePaths, skipNested, useGlobPatterns]);
 
   return (
-    <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
+    <div className="bg-card p-6 lg:p-8 rounded-2xl shadow-soft hover:shadow-soft-lg transition-shadow duration-300">
       <ResultsTable
         folders={folders}
         rootPath={root}
@@ -318,7 +318,7 @@ export default function FilesPage() {
       {folders.length > 0 && (
         <div className="mt-6 flex justify-between items-center">
           <button
-            className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-red-700 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
+            className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-red-700 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
             onClick={handleDeleteSelected}
             disabled={selectedCount === 0 || isDeleting || isScanning}
           >
@@ -327,7 +327,7 @@ export default function FilesPage() {
               : `Delete ${selectedCount} Selected Folder(s)`}
           </button>
           {selectedCount > 0 && (
-            <div className="text-lg font-semibold text-gray-700">
+            <div className="text-lg font-semibold text-muted">
               Total: {formatBytes(selectedTotalSize)}
             </div>
           )}
