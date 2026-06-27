@@ -1,12 +1,11 @@
 import { ChevronLeft, ChevronRight, FastForward, Pause, Play, Rewind } from 'lucide-react';
 import VideoCard from '../../components/VideoCard';
 import Button from '../../ui/Button';
-import { VideoAction, VideoItem } from '../../types/ipc';
-import { MULTIWATCH_PAGE_SIZE } from '../../hooks/useVideoCuller';
+import { VideoAction, VideoDisplayItem } from '../../types/ipc';
 
 interface MultiWatchPanelProps {
-  videos: VideoItem[];
-  pageVideos: VideoItem[];
+  videos: VideoDisplayItem[];
+  pageVideos: VideoDisplayItem[];
   page: number;
   totalPages: number;
   isPlaying: boolean;
@@ -51,7 +50,7 @@ export default function MultiWatchPanel({ videos, pageVideos, page, totalPages, 
 
       <div key={page} className="grid gap-3 grid-cols-3">
         {pageVideos.map((video, localIndex) => {
-          const globalIndex = page * MULTIWATCH_PAGE_SIZE + localIndex;
+          const globalIndex = video.globalIndex;
           return (
             <VideoCard
               key={video.path}

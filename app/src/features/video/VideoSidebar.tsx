@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Folder, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import Button from '../../ui/Button';
 import DualRangeSlider from '../../ui/DualRangeSlider';
 import SidebarSection from '../../ui/SidebarSection';
@@ -94,6 +95,7 @@ function SortRow({
           <option value="name">Name</option>
           <option value="size">Size</option>
           <option value="duration">Duration</option>
+          <option value="date">Date</option>
         </select>
         <button
           onClick={() => onSortDirChange(sortDir === 'asc' ? 'desc' : 'asc')}
@@ -122,8 +124,29 @@ export default function VideoSidebar({
 }: VideoSidebarProps) {
   const isFiltered = statusFilter !== 'all' || sizeFilter !== null || durationFilter !== null;
   const sizeStep = maxSizeBytes > 0 ? Math.max(1024, Math.pow(2, Math.floor(Math.log2(maxSizeBytes / 200)))) : 1;
-  const displaySizeRange: [number, number] = sizeFilter ?? [0, maxSizeBytes];
-  const displayDurationRange: [number, number] = durationFilter ?? [0, maxDurationSeconds];
+  const [draftSizeRange, setDraftSizeRange] = useState<[number, number]>(sizeFilter ?? [0, maxSizeBytes]);
+  const [draftDurationRange, setDraftDurationRange] = useState<[number, number]>(durationFilter ?? [0, maxDurationSeconds]);
+
+  useEffect(() => setDraftSizeRange(sizeFilter ?? [0, maxSizeBytes]), [sizeFilter, maxSizeBytes]);
+  useEffect(() => setDraftDurationRange(durationFilter ?? [0, maxDurationSeconds]), [durationFilter, maxDurationSeconds]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const isFullRange = draftSizeRange[0] <= 0 && draftSizeRange[1] >= maxSizeBytes;
+      const next = isFullRange ? null : draftSizeRange;
+      if (JSON.stringify(next) !== JSON.stringify(sizeFilter)) onSizeFilterChange(next);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [draftSizeRange, maxSizeBytes, onSizeFilterChange, sizeFilter]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const isFullRange = draftDurationRange[0] <= 0 && draftDurationRange[1] >= maxDurationSeconds;
+      const next = isFullRange ? null : draftDurationRange;
+      if (JSON.stringify(next) !== JSON.stringify(durationFilter)) onDurationFilterChange(next);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [draftDurationRange, maxDurationSeconds, onDurationFilterChange, durationFilter]);
 
   return (
     <div className="p-4 space-y-5 text-sm">
@@ -175,7 +198,7 @@ export default function VideoSidebar({
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-subtle uppercase tracking-widest">File Size</p>
                   {sizeFilter && (
-                    <button onClick={() => onSizeFilterChange(null)} className="text-muted hover:text-foreground transition-colors" title="Clear size filter">
+                    <button onClick={() => { setDraftSizeRange([0, maxSizeBytes]); onSizeFilterChange(null); }} className="text-muted hover:text-foreground transition-colors" title="Clear size filter">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -184,11 +207,8 @@ export default function VideoSidebar({
                   min={0}
                   max={maxSizeBytes}
                   step={sizeStep}
-                  value={displaySizeRange}
-                  onChange={(range) => {
-                    const isFullRange = range[0] === 0 && range[1] >= maxSizeBytes;
-                    onSizeFilterChange(isFullRange ? null : range);
-                  }}
+                  value={draftSizeRange}
+                  onChange={setDraftSizeRange}
                   formatLabel={(v) => formatBytes(v)}
                 />
               </div>
@@ -200,7 +220,7 @@ export default function VideoSidebar({
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-subtle uppercase tracking-widest">Duration</p>
                   {durationFilter && (
-                    <button onClick={() => onDurationFilterChange(null)} className="text-muted hover:text-foreground transition-colors" title="Clear duration filter">
+                    <button onClick={() => { setDraftDurationRange([0, maxDurationSeconds]); onDurationFilterChange(null); }} className="text-muted hover:text-foreground transition-colors" title="Clear duration filter">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -209,11 +229,8 @@ export default function VideoSidebar({
                   min={0}
                   max={maxDurationSeconds}
                   step={1}
-                  value={displayDurationRange}
-                  onChange={(range) => {
-                    const isFullRange = range[0] === 0 && range[1] >= maxDurationSeconds;
-                    onDurationFilterChange(isFullRange ? null : range);
-                  }}
+                  value={draftDurationRange}
+                  onChange={setDraftDurationRange}
                   formatLabel={(v) => formatDuration(v)}
                 />
               </div>
