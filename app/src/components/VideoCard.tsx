@@ -4,7 +4,6 @@ import { VideoAction } from '../types/ipc';
 import { formatBytes } from '../utils/formatBytes';
 import { Maximize2, Film } from 'lucide-react';
 import Button from '../ui/Button';
-import IconButton from '../ui/IconButton';
 
 interface VideoCardProps {
   path: string;
@@ -93,13 +92,13 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
           )}
 
           {/* Expand button */}
-          <IconButton
+          <Button variant="unstyled" size="icon"
             className="absolute top-2 left-2 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-black/70"
             onClick={(e) => { e.stopPropagation(); onExpand(); }}
             title="Expand"
           >
             <Maximize2 className="w-4 h-4" />
-          </IconButton>
+          </Button>
 
           {/* Action badge overlay */}
           {action && (

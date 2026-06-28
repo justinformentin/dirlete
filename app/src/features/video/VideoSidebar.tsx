@@ -1,7 +1,6 @@
 import { ArrowDown, ArrowUp, Folder, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Button from '../../ui/Button';
-import IconButton from '../../ui/IconButton';
 import RangeInput from '../../ui/RangeInput';
 import Select from '../../ui/Select';
 import DualRangeSlider from '../../ui/DualRangeSlider';
@@ -101,13 +100,13 @@ function SortRow({
           <option value="duration">Duration</option>
           <option value="date">Date</option>
         </Select>
-        <IconButton
+        <Button variant="unstyled" size="icon"
           onClick={() => onSortDirChange(sortDir === 'asc' ? 'desc' : 'asc')}
           title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
           className="p-1.5 bg-surface hover:bg-surface-hover border border-border rounded-md text-muted hover:text-foreground"
         >
           {sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-        </IconButton>
+        </Button>
       </div>
     </div>
   );
@@ -203,9 +202,9 @@ export default function VideoSidebar({
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-subtle uppercase tracking-widest">File Size</p>
                   {sizeFilter && (
-                    <IconButton onClick={() => { setDraftSizeRange([0, maxSizeBytes]); onSizeFilterChange(null); }} className="p-0 text-muted hover:text-foreground" title="Clear size filter">
+                    <Button variant="unstyled" size="icon" onClick={() => { setDraftSizeRange([0, maxSizeBytes]); onSizeFilterChange(null); }} className="p-0 text-muted hover:text-foreground" title="Clear size filter">
                       <X className="w-3 h-3" />
-                    </IconButton>
+                    </Button>
                   )}
                 </div>
                 <DualRangeSlider
@@ -225,9 +224,9 @@ export default function VideoSidebar({
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-subtle uppercase tracking-widest">Duration</p>
                   {durationFilter && (
-                    <IconButton onClick={() => { setDraftDurationRange([0, maxDurationSeconds]); onDurationFilterChange(null); }} className="p-0 text-muted hover:text-foreground" title="Clear duration filter">
+                    <Button variant="unstyled" size="icon" onClick={() => { setDraftDurationRange([0, maxDurationSeconds]); onDurationFilterChange(null); }} className="p-0 text-muted hover:text-foreground" title="Clear duration filter">
                       <X className="w-3 h-3" />
-                    </IconButton>
+                    </Button>
                   )}
                 </div>
                 <DualRangeSlider
