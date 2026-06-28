@@ -293,7 +293,7 @@ export function useVideoCuller() {
   const deleteCount = videos.filter((video) => video.action === 'delete').length;
   const deleteSize = videos.filter((video) => video.action === 'delete').reduce((size, video) => size + (video.sizeBytes ?? 0), 0);
 
-  const visibleActionCounts = filteredSortedVideos.reduce(
+  const actionCounts = videos.reduce(
     (counts, video) => {
       if (video.action === null) counts.unmarked += 1;
       else counts[video.action] += 1;
@@ -301,9 +301,9 @@ export function useVideoCuller() {
     },
     { delete: 0, keep: 0, skip: 0, unmarked: 0 },
   );
-  const keepCount = visibleActionCounts.keep;
-  const skipCount = visibleActionCounts.skip;
-  const unmarkedCount = visibleActionCounts.unmarked;
+  const keepCount = actionCounts.keep;
+  const skipCount = actionCounts.skip;
+  const unmarkedCount = actionCounts.unmarked;
   const totalMultiWatchPages = Math.ceil(filteredSortedVideos.length / MULTIWATCH_PAGE_SIZE);
   const multiWatchVideos = filteredSortedVideos.slice(multiWatchPage * MULTIWATCH_PAGE_SIZE, (multiWatchPage + 1) * MULTIWATCH_PAGE_SIZE);
   const modalVideo = modalIndex !== null ? videos[modalIndex] : null;
