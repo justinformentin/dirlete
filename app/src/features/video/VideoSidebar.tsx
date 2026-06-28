@@ -1,6 +1,9 @@
 import { ArrowDown, ArrowUp, Folder, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Button from '../../ui/Button';
+import IconButton from '../../ui/IconButton';
+import RangeInput from '../../ui/RangeInput';
+import Select from '../../ui/Select';
 import DualRangeSlider from '../../ui/DualRangeSlider';
 import SidebarSection from '../../ui/SidebarSection';
 import { StatusFilter, VideoSortBy, SortDir } from '../../types/ipc';
@@ -55,7 +58,8 @@ function StatusPill({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant="unstyled"
       onClick={onClick}
       className={[
         'flex flex-col items-center justify-center py-2 rounded-lg text-center w-full transition-colors',
@@ -66,7 +70,7 @@ function StatusPill({
     >
       <span className={`text-base font-semibold leading-none ${colorClass ?? 'text-foreground'}`}>{count}</span>
       <span className="text-[10px] text-subtle uppercase tracking-wide mt-0.5">{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -87,23 +91,23 @@ function SortRow({
     <div>
       <p className="text-[10px] text-subtle uppercase tracking-widest mb-1.5">{label}</p>
       <div className="flex gap-1.5">
-        <select
+        <Select
           value={sortBy}
           onChange={(e) => onSortByChange(e.target.value as VideoSortBy)}
-          className="flex-1 bg-surface text-foreground text-xs rounded-md px-2 py-1.5 border border-border cursor-pointer outline-none focus:ring-1 focus:ring-purple-500"
+          className="flex-1"
         >
           <option value="name">Name</option>
           <option value="size">Size</option>
           <option value="duration">Duration</option>
           <option value="date">Date</option>
-        </select>
-        <button
+        </Select>
+        <IconButton
           onClick={() => onSortDirChange(sortDir === 'asc' ? 'desc' : 'asc')}
           title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-          className="p-1.5 bg-surface hover:bg-surface-hover border border-border rounded-md text-muted hover:text-foreground transition-colors"
+          className="p-1.5 bg-surface hover:bg-surface-hover border border-border rounded-md text-muted hover:text-foreground"
         >
           {sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-        </button>
+        </IconButton>
       </div>
     </div>
   );
@@ -172,7 +176,8 @@ export default function VideoSidebar({
 
             {/* Status filter */}
             <div className="mb-3">
-              <button
+              <Button
+                variant="unstyled"
                 onClick={() => onStatusFilterChange('all')}
                 className={[
                   'flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs mb-2 transition-colors',
@@ -183,7 +188,7 @@ export default function VideoSidebar({
               >
                 <span className="font-medium">All videos</span>
                 <span className="font-semibold text-foreground">{total}</span>
-              </button>
+              </Button>
               <div className="grid grid-cols-2 gap-1.5">
                 <StatusPill label="Pending" count={unmarkedCount} active={statusFilter === 'pending'} onClick={() => onStatusFilterChange(statusFilter === 'pending' ? 'all' : 'pending')} />
                 <StatusPill label="Keep" count={keepCount} active={statusFilter === 'keep'} colorClass="text-green-400" onClick={() => onStatusFilterChange(statusFilter === 'keep' ? 'all' : 'keep')} />
@@ -198,9 +203,9 @@ export default function VideoSidebar({
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-subtle uppercase tracking-widest">File Size</p>
                   {sizeFilter && (
-                    <button onClick={() => { setDraftSizeRange([0, maxSizeBytes]); onSizeFilterChange(null); }} className="text-muted hover:text-foreground transition-colors" title="Clear size filter">
+                    <IconButton onClick={() => { setDraftSizeRange([0, maxSizeBytes]); onSizeFilterChange(null); }} className="p-0 text-muted hover:text-foreground" title="Clear size filter">
                       <X className="w-3 h-3" />
-                    </button>
+                    </IconButton>
                   )}
                 </div>
                 <DualRangeSlider
@@ -220,9 +225,9 @@ export default function VideoSidebar({
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-subtle uppercase tracking-widest">Duration</p>
                   {durationFilter && (
-                    <button onClick={() => { setDraftDurationRange([0, maxDurationSeconds]); onDurationFilterChange(null); }} className="text-muted hover:text-foreground transition-colors" title="Clear duration filter">
+                    <IconButton onClick={() => { setDraftDurationRange([0, maxDurationSeconds]); onDurationFilterChange(null); }} className="p-0 text-muted hover:text-foreground" title="Clear duration filter">
                       <X className="w-3 h-3" />
-                    </button>
+                    </IconButton>
                   )}
                 </div>
                 <DualRangeSlider
@@ -240,7 +245,8 @@ export default function VideoSidebar({
           <SidebarSection title="Sort">
             <div className="space-y-3">
               {/* Group by folder toggle */}
-              <button
+              <Button
+                variant="unstyled"
                 onClick={() => onGroupByFolderChange(!groupByFolder)}
                 className={[
                   'flex items-center gap-2 w-full px-3 py-2 text-xs rounded-md border transition-colors',
@@ -251,7 +257,7 @@ export default function VideoSidebar({
               >
                 <Folder className="w-3.5 h-3.5 shrink-0" />
                 Group by folder
-              </button>
+              </Button>
 
               {groupByFolder ? (
                 <>
@@ -285,14 +291,12 @@ export default function VideoSidebar({
           <SidebarSection title="View">
             <p className="text-[10px] text-subtle uppercase tracking-widest mb-2">Card Size</p>
             <div className="flex items-center gap-3">
-              <input
-                type="range"
+              <RangeInput
                 min={0}
                 max={100}
                 value={cardSize}
                 onChange={(e) => onCardSizeChange(Number(e.target.value))}
-                style={{ accentColor: 'var(--theme-primary)' }}
-                className="flex-1 cursor-pointer h-1"
+                className="flex-1"
               />
               <span className="text-xs text-muted w-9 text-right tabular-nums">{cardSize}%</span>
             </div>

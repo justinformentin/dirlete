@@ -1,5 +1,8 @@
 import React from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
+import Button from '../ui/Button';
+import FieldLabel from '../ui/FieldLabel';
+import TextInput from '../ui/TextInput';
 
 interface RootPickerProps {
   root: string;
@@ -28,26 +31,24 @@ const RootPicker: React.FC<RootPickerProps> = ({ root, onRootChange, disabled })
 
   return (
     <div className="mb-5">
-      <label htmlFor="root-path" className="block mb-2 text-sm font-semibold text-gray-800">
-        Root Directory
-      </label>
+      <FieldLabel htmlFor="root-path">Root Directory</FieldLabel>
       <div className="flex gap-3">
-        <input
+        <TextInput
           id="root-path"
           type="text"
           value={root}
           onChange={(e) => onRootChange(e.target.value)}
           placeholder="Select a root directory to scan..."
           disabled={disabled}
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-3 border border-border rounded-lg font-mono focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all duration-200"
         />
-        <button
+        <Button
           onClick={handleChooseFolder}
           disabled={disabled}
-          className="px-5 py-3 bg-sky-600 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg hover:bg-sky-700 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
+          className="px-5 py-3 bg-sky-600 text-white hover:bg-sky-700 shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:shadow-none"
         >
           Browse...
-        </button>
+        </Button>
       </div>
     </div>
   );

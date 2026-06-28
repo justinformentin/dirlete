@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'lightDanger' | 'warning' | 'unstyled';
-type ButtonSize = 'xs' | 'sm' | 'md' | 'icon';
+type ButtonSize = 'none' | 'xs' | 'sm' | 'md' | 'icon';
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: 'bg-purple-600 hover:bg-purple-500 text-white',
@@ -14,13 +14,14 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  none: '',
   xs: 'px-3 py-1.5 text-xs rounded-md',
   sm: 'px-2 py-2 text-sm rounded-md',
   md: 'px-5 py-2.5 text-sm rounded-lg',
   icon: 'p-2 rounded-lg',
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   fullWidth?: boolean;
@@ -29,7 +30,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export default function Button({
   variant = 'secondary',
-  size = 'md',
+  size,
   fullWidth = false,
   className = '',
   children,
@@ -40,7 +41,7 @@ export default function Button({
       className={[
         'font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
         variantClasses[variant],
-        sizeClasses[size],
+        sizeClasses[size ?? (variant === 'unstyled' ? 'none' : 'md')],
         fullWidth && 'w-full',
         className,
       ].filter(Boolean).join(' ')}

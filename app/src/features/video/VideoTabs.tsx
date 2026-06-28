@@ -1,3 +1,4 @@
+import Button from '../../ui/Button';
 export type VideoTab = 'browse' | 'multiwatch';
 
 interface VideoTabsProps {
@@ -15,8 +16,8 @@ export default function VideoTabs({ activeTab, count, onChange }: VideoTabsProps
 
   return (
     <div className="mb-4 flex gap-1 border-b border-border">
-      <button className={tabClass('browse')} onClick={() => onChange('browse')}>Browse ({count})</button>
-      <button className={tabClass('multiwatch')} onClick={() => onChange('multiwatch')}>Multi-Watch</button>
+      <Button variant="unstyled" className={tabClass('browse')} onClick={() => onChange('browse')}>Browse ({count})</Button>
+      <Button variant="unstyled" className={tabClass('multiwatch')} onClick={() => onChange('multiwatch')}>Multi-Watch</Button>
     </div>
   );
 }
