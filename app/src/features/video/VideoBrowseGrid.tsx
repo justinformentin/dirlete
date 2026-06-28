@@ -26,6 +26,8 @@ export default function VideoBrowseGrid({
   videos, focusedIndex, cardSize, groupByFolder,
   videoRefs, onFocus, onAction, onExpand, onDurationLoaded,
 }: VideoBrowseGridProps) {
+  videoRefs.current = [];
+
   if (videos.length === 0) return null;
 
   const minCardWidth = getMinCardWidth(cardSize);

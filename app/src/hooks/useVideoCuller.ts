@@ -66,20 +66,29 @@ export function useVideoCuller() {
 
   useEffect(() => {
     const unsubs: Array<() => void> = [];
+    let disposed = false;
+
+    const addUnsubscribe = (unsubscribe: () => void) => {
+      if (disposed) unsubscribe();
+      else unsubs.push(unsubscribe);
+    };
 
     listen<VideoScanProgressEvent>('video-scan-progress', (event: Event<VideoScanProgressEvent>) => {
       const { path, sizeBytes, modifiedMs } = event.payload;
       pendingVideos.current.push({ path, sizeBytes, modifiedMs, action: savedActions.current[path] ?? null });
       if (!flushTimer.current) flushTimer.current = setTimeout(flushPending, 50);
-    }).then((unsubscribe) => unsubs.push(unsubscribe));
+    }).then(addUnsubscribe);
 
     listen<VideoScanCompleteEvent>('video-scan-complete', () => {
       if (flushTimer.current) clearTimeout(flushTimer.current);
       flushPending();
       setIsScanning(false);
-    }).then((unsubscribe) => unsubs.push(unsubscribe));
+    }).then(addUnsubscribe);
 
-    return () => unsubs.forEach((unsubscribe) => unsubscribe());
+    return () => {
+      disposed = true;
+      unsubs.forEach((unsubscribe) => unsubscribe());
+    };
   }, [flushPending]);
 
   const applyAction = useCallback((index: number, action: VideoAction | null) => {
@@ -283,9 +292,18 @@ export function useVideoCuller() {
 
   const deleteCount = videos.filter((video) => video.action === 'delete').length;
   const deleteSize = videos.filter((video) => video.action === 'delete').reduce((size, video) => size + (video.sizeBytes ?? 0), 0);
-  const keepCount = videos.filter((video) => video.action === 'keep').length;
-  const skipCount = videos.filter((video) => video.action === 'skip').length;
-  const unmarkedCount = videos.filter((video) => video.action === null).length;
+
+  const visibleActionCounts = filteredSortedVideos.reduce(
+    (counts, video) => {
+      if (video.action === null) counts.unmarked += 1;
+      else counts[video.action] += 1;
+      return counts;
+    },
+    { delete: 0, keep: 0, skip: 0, unmarked: 0 },
+  );
+  const keepCount = visibleActionCounts.keep;
+  const skipCount = visibleActionCounts.skip;
+  const unmarkedCount = visibleActionCounts.unmarked;
   const totalMultiWatchPages = Math.ceil(filteredSortedVideos.length / MULTIWATCH_PAGE_SIZE);
   const multiWatchVideos = filteredSortedVideos.slice(multiWatchPage * MULTIWATCH_PAGE_SIZE, (multiWatchPage + 1) * MULTIWATCH_PAGE_SIZE);
   const modalVideo = modalIndex !== null ? videos[modalIndex] : null;
