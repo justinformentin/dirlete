@@ -3,6 +3,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { VideoAction } from '../types/ipc';
 import { formatBytes } from '../utils/formatBytes';
 import { Maximize2, Film } from 'lucide-react';
+import Button from '../ui/Button';
 
 interface VideoCardProps {
   path: string;
@@ -91,13 +92,13 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
           )}
 
           {/* Expand button */}
-          <button
+          <Button variant="unstyled" size="icon"
             className="absolute top-2 left-2 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-black/70"
             onClick={(e) => { e.stopPropagation(); onExpand(); }}
             title="Expand"
           >
             <Maximize2 className="w-4 h-4" />
-          </button>
+          </Button>
 
           {/* Action badge overlay */}
           {action && (
@@ -128,7 +129,8 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
 
           {/* Action buttons */}
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="unstyled"
               className={[
                 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors',
                 action === 'keep'
@@ -139,8 +141,9 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
               title="Keep (K)"
             >
               Keep
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="unstyled"
               className={[
                 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors',
                 action === 'delete'
@@ -151,7 +154,7 @@ const VideoCard = forwardRef<HTMLVideoElement, VideoCardProps>(
               title="Delete (D)"
             >
               Delete
-            </button>
+            </Button>
           </div>
         </div>
       </div>

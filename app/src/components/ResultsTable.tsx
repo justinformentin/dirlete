@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FolderRow } from '../types/ipc';
 import { formatBytes } from '../utils/formatBytes';
+import Checkbox from '../ui/Checkbox';
 
 enum Status {
   Pending = 'pending',
@@ -117,12 +118,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
           <thead className="sticky top-0 bg-surface z-10 shadow-sm">
             <tr>
               <th className="w-12 text-center p-4 text-left text-sm font-bold text-foreground border-b-2 border-border">
-                <input
-                  type="checkbox"
+                <Checkbox
+                  aria-label="Select all folders"
                   checked={allSelected}
                   onChange={onToggleAll}
                   disabled={deletableCount === 0}
-                  className="w-5 h-5 text-primary rounded cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary/20"
                 />
               </th>
               <th
@@ -161,12 +162,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
               return (
                 <tr key={folder.path} className="hover:bg-surface transition-colors duration-150">
                   <td className="text-center p-3.5 text-sm border-b border-border">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      aria-label={`Select ${folder.path}`}
                       checked={isSelected}
                       onChange={() => onToggleSelection(folder.path)}
                       disabled={!canSelect}
-                      className="w-5 h-5 text-primary rounded cursor-pointer focus:ring-2 focus:ring-primary/20"
+                      className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary/20"
                     />
                   </td>
                   <td

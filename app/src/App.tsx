@@ -4,6 +4,7 @@ import VideoPage from './pages/VideoPage';
 import { SidebarContext } from './SidebarContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { Folder, Film, Sun, Moon } from 'lucide-react';
+import Button from './ui/Button';
 import './App.css';
 
 type Page = 'files' | 'video';
@@ -30,8 +31,11 @@ function AppShell() {
 
           {/* Page nav */}
           <nav className="px-2 pb-3 border-b border-border space-y-0.5">
-            <button
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            <Button
+              variant="unstyled"
+              size="sm"
+              fullWidth
+              className={`flex items-center gap-2.5 px-3 py-2 ${
                 page === 'files'
                   ? 'bg-purple-600 text-white'
                   : 'text-muted hover:text-foreground hover:bg-surface'
@@ -40,9 +44,12 @@ function AppShell() {
             >
               <Folder className="w-4 h-4 shrink-0" />
               Folder Cleaner
-            </button>
-            <button
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            </Button>
+            <Button
+              variant="unstyled"
+              size="sm"
+              fullWidth
+              className={`flex items-center gap-2.5 px-3 py-2 ${
                 page === 'video'
                   ? 'bg-purple-600 text-white'
                   : 'text-muted hover:text-foreground hover:bg-surface'
@@ -51,7 +58,7 @@ function AppShell() {
             >
               <Film className="w-4 h-4 shrink-0" />
               Video Cull
-            </button>
+            </Button>
           </nav>
 
           {/* Page-specific sidebar content */}
@@ -61,15 +68,18 @@ function AppShell() {
 
           {/* Theme toggle */}
           <div className="px-4 py-3 border-t border-border">
-            <button
+            <Button
+              variant="unstyled"
+              size="sm"
+              fullWidth
               onClick={toggleTheme}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted hover:text-foreground hover:bg-surface transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-muted hover:text-foreground hover:bg-surface"
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark'
                 ? <><Sun className="w-4 h-4 shrink-0" /> Light mode</>
                 : <><Moon className="w-4 h-4 shrink-0" /> Dark mode</>}
-            </button>
+            </Button>
           </div>
         </aside>
 

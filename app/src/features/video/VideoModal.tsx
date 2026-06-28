@@ -59,9 +59,9 @@ export default function VideoModal({ index, video, filename, src, action, totalV
           </div>
           <div className="flex items-center gap-2 shrink-0 text-xs text-gray-400">
             <span>{index + 1} / {totalVideos}</span>
-            <button className="p-1.5 rounded hover:bg-white/10 transition-colors" onClick={onClose} title="Close (Esc)">
+            <Button variant="unstyled" className="p-1.5 rounded hover:bg-white/10" onClick={onClose} title="Close (Esc)">
               <X className="w-5 h-5 text-white" />
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import { KeyboardEvent, useState } from 'react';
+import Button from './Button';
 import TextInput from './TextInput';
 import { X } from 'lucide-react';
 
@@ -50,17 +51,19 @@ export default function TagInput({
             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-medium ${tagClassName}`}
           >
             {value}
-            <button
+            <Button
+              variant="unstyled"
+              size="xs"
               type="button"
               onClick={() =>
                 onValuesChange(values.filter((item) => item !== value))
               }
               disabled={disabled}
-              className={`ml-0.5 font-bold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${removeClassName}`}
+              className={`ml-0.5 p-0 font-bold ${removeClassName}`}
               aria-label={`Remove ${value}`}
             >
               <X className="w-3 h-3" />
-            </button>
+            </Button>
           </span>
         ))}
       </div>
